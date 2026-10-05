@@ -88,7 +88,7 @@ export const categoryScores: CategoryScore[] = [
     metrics: [
       { label: 'Custom Fields', value: '148', tone: 'down' },
       { label: 'Field completion', value: '43%', tone: 'down' },
-      { label: 'Unused fields', value: '61', tone: 'down' },
+      { label: '0% filled fields', value: '61', tone: 'down' },
     ],
   },
   {
@@ -109,8 +109,8 @@ export const categoryScores: CategoryScore[] = [
     blurb: 'Most seats are active, with a handful of quiet members and Spaces.',
     metrics: [
       { label: 'Active members', value: '37 / 42', tone: 'up' },
-      { label: 'Quiet seats', value: '5', tone: 'down' },
-      { label: 'Comments (30d)', value: '3,914', tone: 'up' },
+      { label: 'Inactive members', value: '5', tone: 'down' },
+      { label: 'Guests', value: '38%', tone: 'neutral' },
     ],
   },
   {
@@ -119,9 +119,9 @@ export const categoryScores: CategoryScore[] = [
     score: 57,
     blurb: 'Several high-value ClickUp capabilities are enabled but barely used.',
     metrics: [
-      { label: 'Capabilities used', value: '8 / 18', tone: 'down' },
-      { label: 'Automations', value: '0', tone: 'down' },
-      { label: 'Goals tracked', value: '2', tone: 'neutral' },
+      { label: 'Scored signals', value: '3', tone: 'down' },
+      { label: 'Time tracking', value: '6%', tone: 'down' },
+      { label: 'Views / Space', value: '1.8', tone: 'down' },
     ],
   },
   {
@@ -198,14 +198,27 @@ export const findings: Finding[] = [
     affected: '612 tasks',
   },
   {
+    id: 'f-subtasks',
+    title: 'Open subtasks under closed parents',
+    category: 'Operational Health',
+    severity: 'medium',
+    metric: '312',
+    metricLabel: 'open subtasks under Done parents',
+    explanation:
+      '312 open subtasks sit under parents already marked Done/Closed, which hides live work and skews completion reporting.',
+    recommendation:
+      'Reopen the parent tasks, or promote the remaining subtasks so active work is visible.',
+    affected: '312 subtasks',
+  },
+  {
     id: 'f-customfields',
-    title: 'Custom Field bloat',
+    title: 'Custom Fields never filled',
     category: 'Data & Governance',
     severity: 'high',
     metric: '61',
-    metricLabel: 'fields unused in 90 days',
+    metricLabel: 'fields at 0% filled',
     explanation:
-      '148 Custom Fields exist, 61 of which have had no values written in 90 days. Overall field completion sits at 43%, weakening reporting.',
+      '148 Custom Fields exist and 61 sit at 0% filled on the tasks where they apply. Average field completion is 43%, weakening reporting.',
     recommendation:
       'Retire unused fields and make key fields required in the Spaces where they drive reporting.',
     affected: '61 fields',
@@ -224,18 +237,6 @@ export const findings: Finding[] = [
     affected: '1,284 tasks',
   },
   {
-    id: 'f-automation',
-    title: 'Automations not in use',
-    category: 'Platform Utilisation',
-    severity: 'opportunity',
-    metric: '0',
-    metricLabel: 'automations configured',
-    explanation:
-      'No automations are configured despite repetitive status-change and assignment work visible in task history.',
-    recommendation:
-      'Start with 3 high-value automations: assignment on status change, overdue notifications and recurring task templates.',
-  },
-  {
     id: 'f-timetracking',
     title: 'Time tracking enabled but unused',
     category: 'Platform Utilisation',
@@ -243,17 +244,17 @@ export const findings: Finding[] = [
     metric: '6%',
     metricLabel: 'of tasks with any time logged',
     explanation:
-      'Time tracking is available and 38 paid seats exist, but only 6% of tasks have time logged — capacity and forecasting data is unavailable.',
+      'Time tracking is available across the workspace, but only 6% of tasks have time logged — capacity and forecasting data is unavailable.',
     recommendation:
       'Roll out light time tracking on client-billable Lists only, so estimates and workload views become usable.',
   },
   {
     id: 'f-views',
-    title: 'Reporting views are under-used',
-    category: 'Adoption & Activity',
+    title: 'Views under-used',
+    category: 'Platform Utilisation',
     severity: 'medium',
-    metric: '11',
-    metricLabel: 'saved views across 6 Spaces',
+    metric: '1.8',
+    metricLabel: 'Views per Space',
     explanation:
       'Only 11 saved List/Table views exist across the workspace, and 4 Spaces have no dashboard at all.',
     recommendation:
@@ -262,16 +263,16 @@ export const findings: Finding[] = [
   },
   {
     id: 'f-quiet',
-    title: 'Quiet seats adding cost',
+    title: 'Inactive members',
     category: 'Adoption & Activity',
-    severity: 'opportunity',
+    severity: 'medium',
     metric: '5',
-    metricLabel: 'paid seats inactive for 30d',
+    metricLabel: 'members inactive for 30d',
     explanation:
-      '5 of 38 paid seats have not created, completed or commented on work in 30 days — roughly $95/month at list pricing.',
+      '5 of 42 members (about 12%) have not created, completed or commented on work in 30 days. Roles are exposed by the API, not billing, so this is activity-based.',
     recommendation:
-      'Confirm whether these seats are needed, or downgrade/deactivate them to recover spend.',
-    affected: '5 seats · ~$95/mo',
+      'Confirm whether these members still need access, or reduce their seat type.',
+    affected: '5 members',
   },
 ]
 
@@ -318,17 +319,19 @@ export const performingWell = [
 export const aiSummary = [
   'Northwind Creative scores 74/100. The workspace is structurally sound and the team actively uses it, but operational discipline and data hygiene are the weak points.',
   'The single biggest risk is overdue work: nearly a third of active tasks are past due, concentrated in three Spaces. This typically signals unclear ownership or unrealistic scheduling rather than lack of activity.',
-  'Quick wins sit in governance and utilisation. Retiring 61 unused Custom Fields and switching on three automations would lift both the Data & Governance and Platform Utilisation scores without new process overhead.',
+  'Quick wins sit in governance and utilisation. Retiring the 61 never-filled Custom Fields and adopting time tracking on client work would lift both the Data & Governance and Platform Utilisation scores without new process overhead.',
   'If overdue work is brought back under 15% and time tracking is adopted on client work, the projected score rises to approximately 84/100.',
 ]
 
 export const rules = [
-  { name: 'Overdue rate', condition: 'overdue / active > threshold', threshold: '15%', severity: 'Critical', weight: '12%' },
-  { name: 'List fragmentation', condition: 'lists with < 5 tasks', threshold: '20%', severity: 'High', weight: '8%' },
-  { name: 'Unused statuses', condition: 'statuses used on < 1% tasks', threshold: '> 3', severity: 'High', weight: '6%' },
-  { name: 'Stale backlog', condition: 'open tasks untouched 90d+', threshold: '> 5%', severity: 'High', weight: '8%' },
-  { name: 'Field completion', condition: 'custom field fill rate', threshold: '< 60%', severity: 'Medium', weight: '5%' },
-  { name: 'Quiet seats', condition: 'paid seats inactive 30d', threshold: '> 3', severity: 'Opportunity', weight: '2%' },
+  { name: 'Overdue rate', condition: 'overdue / active', threshold: '> 15% High / > 30% Critical', severity: 'High', weight: '30%' },
+  { name: 'Fragmented Lists', condition: 'Lists with < 5 open tasks', threshold: '> 25% of Lists', severity: 'Medium', weight: '35%' },
+  { name: 'Unused statuses', condition: 'statuses used on few tasks', threshold: '> 3 per workflow', severity: 'Medium', weight: '25%' },
+  { name: 'Stale backlog', condition: 'open tasks untouched 90d+', threshold: '> 20% of open', severity: 'High', weight: '25%' },
+  { name: 'Field completion', condition: 'custom field fill rate', threshold: '< 50% where in scope', severity: 'High', weight: '35%' },
+  { name: 'Inactive members', condition: 'members with no activity', threshold: '> 15% of members', severity: 'Medium', weight: '25%' },
+  { name: 'Guest vs member ratio', condition: 'guests / total users', threshold: '> 30% guests', severity: 'Medium', weight: '15%' },
+  { name: 'Open subtasks under closed parents', condition: 'open subtasks under Done', threshold: '> 2% of subtasks', severity: 'Medium', weight: '15%' },
 ]
 
 export const scanStages = [

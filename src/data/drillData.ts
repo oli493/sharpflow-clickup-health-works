@@ -181,14 +181,13 @@ function allDrills(): DrillDataset[] {
     },
     {
       key: 'quiet-seats',
-      title: 'Quiet paid seats',
-      subtitle: 'Paid members with no activity in 30 days',
-      unit: '5 seats · ~$95/mo',
+      title: 'Inactive members',
+      subtitle: 'Members with no activity in the last 30 days',
+      unit: '5 members',
       columns: [
         { key: 'member', label: 'Member' },
         { key: 'role', label: 'Role' },
         { key: 'lastActivity', label: 'Last activity', align: 'right' },
-        { key: 'monthCost', label: 'Cost / mo', align: 'right' },
       ],
       rows: quietSeats(),
     },
@@ -216,12 +215,12 @@ export const drillData: Record<string, DrillDataset> = Object.fromEntries(
 export const metricDrill: Record<string, string> = {
   'Dormant Lists': 'dormant-lists',
   'Custom Fields': 'custom-fields',
-  'Unused fields': 'custom-fields',
+  '0% filled fields': 'custom-fields',
   'Field completion': 'custom-fields',
   'Overdue rate': 'overdue',
   'Stale 90d+': 'stale',
   'Unused statuses': 'unused-statuses',
-  'Quiet seats': 'quiet-seats',
+  'Inactive members': 'quiet-seats',
 }
 
 /** Map finding ids → drill dataset key. */

@@ -136,14 +136,105 @@ underlying items (sample data in the prototype; live data from the ClickUp API i
 
 ---
 
-## 9. Scoring engine principles
+## 9. Scoring model (agreed with Sharpflow)
 
+Oli completed the scoring worksheet and returned it; the final model is captured in
+`docs/scoring-answers.json` and `docs/Sharpflow-ClickUp-Health-Scoring-Worksheet-COMPLETED.pdf`.
+
+**Principles**
 - **Deterministic** — scores come from the engine, never from the LLM.
-- **Layered** — Raw Data → Metrics → Findings → Scores → Recommendations (each layer independent
-  so thresholds can change without re-collecting data).
-- **Configurable** — rules, weights, thresholds and severities are configuration, not code;
-  additive rules without a rebuild.
-- **AI scope** — explains and summarises; must remain grounded in actual findings.
+- **Layered** — Raw Data → Metrics → Findings → Scores → Recommendations.
+- **Configurable** — rules, weights, thresholds and severities are configuration, not code.
+- **AI scope** — explains and summarises; grounded in actual findings only.
+- **No double-counting** — each signal is scored in exactly one category.
+- **Opportunity severity carries little/no score penalty.**
+- **Coverage** — if the connecting user is not Owner/Admin, show a "limited coverage" banner (not scored).
+
+### Category weights (total 100%)
+| # | Category | Weight |
+|---|---|---|
+| 1 | Architecture & Structure | 15% |
+| 2 | Workflow Design | 15% |
+| 3 | Data & Governance | 15% |
+| 4 | Operational Health | 20% |
+| 5 | Adoption & Activity | 15% |
+| 6 | Platform Utilisation | 10% |
+| 7 | Reporting Readiness | 10% |
+
+### Signals (signal weight within category · threshold → severity)
+Feasibility: **✓** measurable · **~** partial/conditional · **✕** not exposed by the API.
+
+**1. Architecture & Structure (15%)**
+| Signal | API | W | Threshold → Severity |
+|---|---|---|---|
+| Avg tasks per List | ✓ | 15 | < 10 (median) → Low |
+| Dormant Lists (no activity) | ✓ | 30 | > 20% of Lists → Medium |
+| Fragmented Lists (< 5 tasks) | ✓ | 35 | > 25% of Lists → Medium |
+| Hierarchy / folder sprawl | ✓ | 20 | > 20% empty Folders → Low |
+
+**2. Workflow Design (15%)**
+| Signal | API | W | Threshold → Severity |
+|---|---|---|---|
+| Statuses per workflow | ✓ | 25 | > 12 per workflow → Low |
+| Unused statuses | ✓ | 25 | > 3 per workflow → Medium |
+| Duplicate status names | ✓ | 20 | same name, different type → Medium |
+| Avg time in a status | ~ | 30 | > 14d in an active status → Medium |
+
+**3. Data & Governance (15%)**
+| Signal | API | W | Threshold → Severity |
+|---|---|---|---|
+| Custom Field count (bloat) | ✓ | 20 | > 100 fields → Low |
+| Custom Field completion rate | ✓ | 35 | < 50% where in scope → High |
+| Fields never filled (0%) | ✓ | 25 | 0% filled in scope → Medium |
+| Tasks missing required Custom Fields | ✓ | 20 | > 20% → Medium |
+
+**4. Operational Health (20%)**
+| Signal | API | W | Threshold → Severity |
+|---|---|---|---|
+| Overdue task rate | ✓ | 30 | > 15% → High · > 30% → **Critical** (tiered) |
+| Stale tasks (no update 90d+) | ✓ | 25 | > 20% of open → High |
+| Open subtasks under closed parents *(new)* | ✓ | 15 | > 2% of subtasks → Medium |
+| Completion vs creation trend | ✓ | 15 | created > done over 3 months → Medium |
+| Work-in-progress level | ✓ | 15 | > 15 open / person → Low |
+
+**5. Adoption & Activity (15%)**
+| Signal | API | W | Threshold → Severity |
+|---|---|---|---|
+| Inactive members *(was "inactive paid seats")* | ~ | 25 | > 15% of members → Medium |
+| Guest vs member ratio *(new)* | ✓ | 15 | > 30% of users are guests → Medium |
+| Activity concentration | ~ | 15 | > 80% in 1 Space → Low |
+| Comment / update frequency | ✓ | 20 | < 1 per active user / week → Low |
+| Dormant Spaces | ✓ | 25 | any (after exclusions) → Medium |
+
+**6. Platform Utilisation (10%)** — scored subset only
+| Signal | API | W | Threshold → Severity |
+|---|---|---|---|
+| Time tracking in use | ✓ | 35 | 0 logged in 90d → Opportunity |
+| Views | ✓ | 30 | < 2 Views per Space → Low |
+| Dependencies / Relationships | ✓ | 35 | none used → Low |
+| Goals · Docs · Custom Task Types | ✓ | — | **insight only** (Opportunity, no score) |
+| Dashboards · Automations · Whiteboards · Workload · AI · Integrations | ✕ | — | **not measured** — never penalised |
+
+**7. Reporting Readiness (10%)**
+| Signal | API | W | Threshold → Severity |
+|---|---|---|---|
+| Due-date coverage | ✓ | 30 | < 80% of open tasks → High |
+| Ownership (assignee) coverage | ✓ | 30 | < 80% of open tasks → High |
+| Estimate coverage | ✓ | 20 | < 40% of open tasks → Medium |
+| Consistent statuses / workflow | ✓ | 20 | > 5 distinct workflows → Medium |
+
+> **Notes:** due-date coverage and estimate coverage are scored **once, in Reporting Readiness only**
+> (removed from Operational Health and Platform Utilisation to avoid double-counting). Weights for the
+> three new signals were set by us and other signals in those categories rebalanced to keep totals at 100%.
+
+### Definitions
+| Term | Definition |
+|---|---|
+| Overdue | past due date AND status is not a Done **or** Closed type |
+| Stale | open, no task update for 90 days |
+| Dormant | no task activity for 90 days |
+| Fragmented List | fewer than 5 open tasks |
+| Active user | created / completed / commented in last 30 days |
 
 ---
 
@@ -168,6 +259,13 @@ token management, permissions, missing data.
 
 > Score only what is verifiable; mark the rest "not measurable" so the score stays credible.
 
+**Feasibility notes (from Oli's worksheet):**
+- **Inactive members** is **partial** (`~`) — the API exposes roles, not billing; activity is inferred
+  from tasks/comments (not logins).
+- **Time in Status** requires the **Time in Status ClickApp** to be enabled (conditional).
+- **Comment frequency** needs per-task calls on large workspaces → **sample** rather than read all.
+- **"Unused Custom Fields (90d)"** became **"0% filled"** — value-change dates are not exposed.
+
 ---
 
 ## 11. Lead capture
@@ -187,7 +285,12 @@ token management, permissions, missing data.
   - `CLICKUP_CLIENT_ID`
   - `CLICKUP_CLIENT_SECRET`
   - `CLICKUP_REDIRECT_URI`
-  - `DATABASE_URL`
+  - `SUPABASE_URL`
+  - `SUPABASE_ANON_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `SUPABASE_DB_URL` (worker / direct connection)
+  - `INNGEST_EVENT_KEY`
+  - `INNGEST_SIGNING_KEY`
   - `LLM_API_KEY` (OpenAI or Anthropic)
   - `LEAD_CAPTURE_WEBHOOK` (optional — CRM/email destination)
 
@@ -199,14 +302,20 @@ token management, permissions, missing data.
 - Vite + React 18 + TypeScript + Tailwind + framer-motion + React Three Fiber.
 - Sample data; no backend. For design sign-off and the walkthrough video.
 
-**Phase B — production app (separate Next.js codebase)**
-- **Next.js (App Router) + TypeScript.**
-- **Postgres** (Supabase/Neon) + ORM.
-- **Background scan worker / queue** (pagination, rate-limit handling, retries).
-- **Deterministic scoring engine** + configurable rules.
+**Phase B — production app (`app/`)**
+- **Next.js (App Router) + TypeScript + Tailwind** (brand tokens carried over from the prototype).
+- **Supabase** — Postgres + file storage. Use the **connection pooler** for the serverless app; direct
+  connection for the background worker.
+- **Inngest** — background scan (paginated, rate-limit aware, retries, progress steps).
+- **Deterministic scoring engine** + configurable rules (§9).
 - **AI layer** (OpenAI/Claude) for explanations only.
-- ClickUp **OAuth** integration.
-- Branded **PDF** export; deploy on **Vercel**.
+- ClickUp **OAuth** integration (localhost redirect in dev; production redirect at deploy).
+- Branded **PDF** export.
+- **Deployed on Vercel** (+ Supabase + Inngest); OAuth redirect URL registered once deployed.
+
+**Repo layout (monorepo, created on GitHub when Oli confirms):**
+`prototype/` (this Vite demo) · `app/` (Next.js) · `docs/` · `scripts/` · `public/brand/`.
+`git init` is already done locally.
 
 ---
 
@@ -226,9 +335,15 @@ token management, permissions, missing data.
 - [x] Light theme to match the site — **decided**.
 - [x] Sapphire badge (file) rather than Diamond (site) — **decided**.
 - [x] Use both site gradients; keep mixing subtle — **decided**.
-- [ ] Exact scoring methodology, weights and thresholds — to be defined with Sharpflow.
-- [ ] Lead destination (email inbox / CRM / webhook) — to confirm.
+- [x] Scoring methodology, weights and thresholds — **defined** (Oli's completed worksheet; see §9).
+- [x] Lead destination — Sharpflow's **ClickUp CRM** (target List to confirm at wiring time).
+- [x] Book-a-call link — Calendly: `calendly.com/oli-sharpflowconsulting/clickup-health-discussion`.
+- [x] Deployment stack — **Vercel + Supabase + Inngest**.
+- [ ] GitHub repo — create a **monorepo under a Sharpflow org** when Oli confirms.
+- [ ] Domain — subdomain `health.sharpflowconsulting.com` (Oli to confirm).
+- [ ] Test workspace access (for live validation) — Oli to hand over.
 - [ ] PDF export template details — to confirm.
+- [ ] **Secret rotation** — the ClickUp client secret was shared in chat; rotate before/at deploy.
 
 ---
 
@@ -238,6 +353,9 @@ token management, permissions, missing data.
 
 ## 17. Documents
 
-- **`docs/Sharpflow-ClickUp-Health-Scoring-Worksheet.pdf`** — fillable scoring worksheet for Sharpflow (weights, thresholds, severities, definitions). Regenerate with `npm run worksheet` (source: `scripts/generate-scoring-worksheet.mjs`).
+- **`docs/Sharpflow-ClickUp-Health-Scoring-Worksheet.pdf`** — blank fillable worksheet. Regenerate with `npm run worksheet` (`scripts/generate-scoring-worksheet.mjs`).
+- **`docs/Sharpflow-ClickUp-Health-Scoring-Worksheet-COMPLETED.pdf`** — Oli's completed version. Rebuild with `node scripts/fill-scoring-worksheet.mjs`.
+- **`docs/scoring-answers.json`** — Oli's answers as data (source of truth for the engine config).
 - **CTA link** — the "Book a call" button points to the Calendly link: `https://calendly.com/oli-sharpflowconsulting/clickup-health-discussion`.
+- **Brand assets** — `public/brand/` (`logo-wordmark.png`, `logo-mark.jpg`, `partner-badge.png`).
 
