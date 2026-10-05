@@ -1,0 +1,170 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-ink text-txt-primary font-body antialiased;
+    margin: 0;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: rgba(224, 16, 114, 0.22);
+    color: #173435;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(23, 52, 53, 0.18);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(23, 52, 53, 0.32);
+    background-clip: content-box;
+  }
+
+  .has-custom-cursor,
+  .has-custom-cursor * {
+    cursor: none !important;
+  }
+  @media (pointer: coarse) {
+    .has-custom-cursor,
+    .has-custom-cursor * {
+      cursor: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .glass {
+    @apply relative rounded-xl2 border border-line bg-white/70;
+    backdrop-filter: blur(16px) saturate(120%);
+    box-shadow: 0 20px 45px -26px rgba(23, 52, 53, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+
+  .glass-raised {
+    @apply glass bg-white/85;
+  }
+
+  .hairline-top::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.9),
+      transparent
+    );
+    opacity: 0.8;
+  }
+
+  .panel-gradient {
+    background:
+      radial-gradient(120% 140% at 0% 0%, rgba(95, 186, 149, 0.22), transparent 55%),
+      radial-gradient(120% 140% at 100% 100%, rgba(222, 247, 110, 0.28), transparent 55%),
+      linear-gradient(135deg, #173435, #24574e 60%, #3f8f6f);
+  }
+
+  .eyebrow {
+    @apply font-accent text-[11px] uppercase tracking-eyebrow text-txt-faint;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full font-medium transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-primary {
+    @apply btn bg-magenta px-7 py-3.5 text-[15px] font-semibold text-white;
+    box-shadow: 0 18px 40px -16px rgba(224, 16, 114, 0.5);
+  }
+  .btn-primary:hover {
+    @apply bg-magenta-hover;
+    transform: translateY(-1px);
+    box-shadow: 0 24px 50px -16px rgba(224, 16, 114, 0.65);
+  }
+
+  .btn-ghost {
+    @apply btn border border-line-strong bg-white/70 px-6 py-3 text-[15px] text-txt-primary;
+  }
+  .btn-ghost:hover {
+    @apply border-brand/40 bg-white;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-white/70 px-3 py-1 font-mono text-[11px] uppercase tracking-wider text-txt-muted;
+  }
+
+  .grid-noise {
+    background-image: linear-gradient(rgba(23, 52, 53, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(23, 52, 53, 0.05) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  .glare::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 300ms ease;
+    background: radial-gradient(
+      340px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(255, 255, 255, 0.55),
+      transparent 55%
+    );
+  }
+  .glare:hover::after {
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .mask-fade-b {
+    -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  }
+  .perspective {
+    perspective: 1200px;
+  }
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
