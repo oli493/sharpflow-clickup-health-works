@@ -139,7 +139,7 @@ underlying items (sample data in the prototype; live data from the ClickUp API i
 ## 9. Scoring model (agreed with Sharpflow)
 
 Oli completed the scoring worksheet and returned it; the final model is captured in
-`docs/scoring-answers.json` and `docs/Sharpflow-ClickUp-Health-Scoring-Worksheet-COMPLETED.pdf`.
+`prototype/docs/scoring-answers.json` and `prototype/docs/Sharpflow-ClickUp-Health-Scoring-Worksheet-COMPLETED.pdf`.
 
 **Principles**
 - **Deterministic** — scores come from the engine, never from the LLM.
@@ -298,7 +298,7 @@ token management, permissions, missing data.
 
 ## 13. Tech stack & architecture
 
-**Phase A — prototype (this repo, `sharpflow-health-demo/`)**
+**Phase A — prototype (`prototype/`)**
 - Vite + React 18 + TypeScript + Tailwind + framer-motion + React Three Fiber.
 - Sample data; no backend. For design sign-off and the walkthrough video.
 
@@ -313,9 +313,9 @@ token management, permissions, missing data.
 - Branded **PDF** export.
 - **Deployed on Vercel** (+ Supabase + Inngest); OAuth redirect URL registered once deployed.
 
-**Repo layout (monorepo, created on GitHub when Oli confirms):**
-`prototype/` (this Vite demo) · `app/` (Next.js) · `docs/` · `scripts/` · `public/brand/`.
-`git init` is already done locally.
+**Repo layout (monorepo):**
+`prototype/` (Vite demo — includes its own `docs/`, `scripts/` and `public/brand/`) · `app/` (Next.js) · `PROJECT.md`.
+Git is initialised locally and pushed to the Sharpflow GitHub repo (`oli493/sharpflow-clickup-health-works`).
 
 ---
 
@@ -353,9 +353,9 @@ token management, permissions, missing data.
 
 ## 17. Documents
 
-- **`docs/Sharpflow-ClickUp-Health-Scoring-Worksheet.pdf`** — blank fillable worksheet. Regenerate with `npm run worksheet` (`scripts/generate-scoring-worksheet.mjs`).
-- **`docs/Sharpflow-ClickUp-Health-Scoring-Worksheet-COMPLETED.pdf`** — Oli's completed version. Rebuild with `node scripts/fill-scoring-worksheet.mjs`.
-- **`docs/scoring-answers.json`** — Oli's answers as data (source of truth for the engine config).
+- **`prototype/docs/Sharpflow-ClickUp-Health-Scoring-Worksheet.pdf`** — blank fillable worksheet. Regenerate with `npm run worksheet` (`prototype/scripts/generate-scoring-worksheet.mjs`).
+- **`prototype/docs/Sharpflow-ClickUp-Health-Scoring-Worksheet-COMPLETED.pdf`** — Oli's completed version. Rebuild with `node prototype/scripts/fill-scoring-worksheet.mjs`.
+- **`prototype/docs/scoring-answers.json`** — Oli's answers as data (source of truth for the engine config).
 - **CTA link** — the "Book a call" button points to the Calendly link: `https://calendly.com/oli-sharpflowconsulting/clickup-health-discussion`.
 - **Brand assets** — `public/brand/` (`logo-wordmark.png`, `logo-mark.jpg`, `partner-badge.png`).
 
