@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-surface font-body text-txt-primary antialiased;
+  margin: 0;
+}
+
+.card {
+  @apply rounded-xl2 border border-black/[0.08] bg-white/70;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 20px 45px -26px rgba(23, 52, 53, 0.35);
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-full bg-magenta px-7 py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-magenta-hover;
+}
