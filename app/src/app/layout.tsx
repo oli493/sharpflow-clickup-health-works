@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import Chrome from '@/components/Chrome'
 
 export const metadata: Metadata = {
   title: 'Sharpflow ClickUp Health',
@@ -18,7 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <Chrome>{children}</Chrome>
+      </body>
     </html>
   )
 }
