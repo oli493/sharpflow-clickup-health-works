@@ -77,3 +77,42 @@ alter table public.connections enable row level security;
 alter table public.scans       enable row level security;
 alter table public.findings    enable row level security;
 alter table public.leads       enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- Phase B additions
+-- ---------------------------------------------------------------------------
+
+-- Scan progress + full result snapshot (the report payload)
+alter table public.scans add column if not exists progress integer not null default 0;
+alter table public.scans add column if not exists stage text;
+alter table public.scans add column if not exists result jsonb;
+
+-- Per-list stats (powers drill-downs: dormant/fragmented lists, space drill)
+create table if not exists public.list_stats (
+  id            uuid primary key default gen_random_uuid(),
+  scan_id       uuid not null references public.scans(id) on delete cascade,
+  list_id       text not null,
+  list_name     text not null,
+  space_id      text,
+  space_name    text,
+  tasks         integer not null default 0,
+  open_tasks    integer not null default 0,
+  overdue       integer not null default 0,
+  stale         integer not null default 0,
+  last_activity timestamptz,
+  created_at    timestamptz not null default now()
+);
+create index if not exists list_stats_scan_idx on public.list_stats (scan_id);
+
+-- Bounded task samples per finding dataset (max ~100 rows each)
+create table if not exists public.scan_samples (
+  id         uuid primary key default gen_random_uuid(),
+  scan_id    uuid not null references public.scans(id) on delete cascade,
+  dataset    text not null,  -- overdue | stale | missing-due | custom-fields | quiet-seats | unused-statuses
+  rows       jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now()
+);
+create index if not exists scan_samples_scan_dataset_idx on public.scan_samples (scan_id, dataset);
+
+alter table public.list_stats   enable row level security;
+alter table public.scan_samples enable row level security;

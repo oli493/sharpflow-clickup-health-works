@@ -58,7 +58,7 @@ export default function LeadCapture() {
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Button
-              onClick={() => window.open('https://sharpflowconsulting.com/book-a-discovery-call', '_blank')}
+              onClick={() => window.open('https://calendly.com/oli-sharpflowconsulting/clickup-health-discussion', '_blank')}
               icon={<IconArrow className="h-4 w-4" />}
               className="px-6 py-3 text-sm"
             >
