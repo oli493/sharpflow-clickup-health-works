@@ -31,19 +31,19 @@ describe('tiered stale + dormant (Oli sign-off: 30/60/90 → Low/Medium/High)', 
 })
 
 describe('magnitude scaling', () => {
-  it('deducts 50% of severity at the threshold and 100% at the ceiling', () => {
+  it('deducts 1× severity at the threshold and scales up to 1.5× at the ceiling', () => {
     // overdue: threshold 15%, ceiling 50%
-    expect(magnitudeFor(overdueSignal, 0.15)).toBeCloseTo(0.5, 2)
-    expect(magnitudeFor(overdueSignal, 0.325)).toBeCloseTo(0.75, 2)
-    expect(magnitudeFor(overdueSignal, 0.5)).toBeCloseTo(1, 2)
-    expect(magnitudeFor(overdueSignal, 0.9)).toBeCloseTo(1, 2) // capped
+    expect(magnitudeFor(overdueSignal, 0.15)).toBeCloseTo(1, 2)
+    expect(magnitudeFor(overdueSignal, 0.325)).toBeCloseTo(1.25, 2)
+    expect(magnitudeFor(overdueSignal, 0.5)).toBeCloseTo(1.5, 2)
+    expect(magnitudeFor(overdueSignal, 0.9)).toBeCloseTo(1.5, 2) // capped
   })
   it('uses the floor for lower-is-worse signals', () => {
     // cf completion: threshold 50%, floor 10%
     const cf = signal('governance', 'cf_completion')
-    expect(magnitudeFor(cf, 0.5)).toBeCloseTo(0.5, 2)
-    expect(magnitudeFor(cf, 0.3)).toBeCloseTo(0.75, 2)
-    expect(magnitudeFor(cf, 0.1)).toBeCloseTo(1, 2)
+    expect(magnitudeFor(cf, 0.5)).toBeCloseTo(1, 2)
+    expect(magnitudeFor(cf, 0.3)).toBeCloseTo(1.25, 2)
+    expect(magnitudeFor(cf, 0.1)).toBeCloseTo(1.5, 2)
   })
   it('a worse value deducts more of the category than a marginal one', () => {
     const marginal = evaluate({ overdueRate: 0.16 })

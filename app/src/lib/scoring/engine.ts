@@ -51,13 +51,13 @@ export function severityFor(signal: Signal, value: number): Severity | null {
   return null
 }
 
-/** A fired signal always deducts at least this fraction of its severity value. */
-const MAGNITUDE_BASELINE = 0.5
+/** Crossing a threshold deducts the flat severity; worse problems scale up to 1.5×. */
+const MAGNITUDE_EXTRA = 0.5
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
 
-/** Crossing a threshold deducts the baseline; the ceiling reaches the full severity. */
-const ramp = (normalised: number) => MAGNITUDE_BASELINE + (1 - MAGNITUDE_BASELINE) * clamp01(normalised)
+/** At the threshold = 1× severity; at the ceiling = (1 + extra)× severity. */
+const ramp = (normalised: number) => 1 + MAGNITUDE_EXTRA * clamp01(normalised)
 
 /**
  * How far past the threshold the workspace is, normalised to [0,1] against the
@@ -140,8 +140,8 @@ export function evaluate(metrics: Metrics): ScoreResult {
         })
       }
 
-      const health = 1 - (sev ? SEVERITY_PENALTY[sev] * magnitudeFor(sig, value) : 0)
-      weighted += sig.weight * health
+      const penalty = sev ? Math.min(1, SEVERITY_PENALTY[sev] * magnitudeFor(sig, value)) : 0
+      weighted += sig.weight * (1 - penalty)
     }
 
     // A category is only "scored" if enough of its signal weight was measurable.
