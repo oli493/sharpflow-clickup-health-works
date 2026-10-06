@@ -8,7 +8,7 @@
 > **No secret values are in this file.** Credentials live in `app/.env.local` (gitignored) and the
 > host/platform settings. See §13.
 
-Last updated: 06 Oct 2026 · repo HEAD at time of writing: `6e5cc98`
+Last updated: 06 Oct 2026 · repo HEAD at time of writing: `3c0faf6` (local metric-coverage work uncommitted)
 
 ---
 
@@ -19,12 +19,13 @@ Last updated: 06 Oct 2026 · repo HEAD at time of writing: `6e5cc98`
   Score** with category scores, findings, severities, recommendations and a polished branded
   dashboard + PDF. Built for **Sharpflow Consulting** as a **lead-generation freebie**.
 - **Where we are:** Phase B is built and **runs end-to-end locally on real ClickUp data**
-  (connect → workspace picker → background scan → report → PDF). First real scan of Oli's demo
-  workspace: **62/100 (C), 6/7 categories measured, 14 findings**. **Not yet deployed.**
+  (connect → workspace picker → background scan → report → PDF). Latest real scan of Oli's demo
+  workspace: **65/100 (C), 7/7 categories measured, 20 findings** (metric coverage completed
+  06 Oct 2026 — Adoption is no longer excluded). **Not yet deployed.**
 - **Biggest blocker:** ClickUp's OAuth is currently **broken on ClickUp's side**; we use a
   **dev personal token** workaround locally. Production still needs OAuth.
-- **Next actions:** finish metric coverage (Views + adoption signals), wire the AI summary
-  (needs Oli's Anthropic workspace id), then deploy to Vercel + Supabase Pro + Inngest.
+- **Next actions:** wire the AI summary (Oli's key arrived 06 Oct but is **user-scoped**, so it
+  needs his Anthropic **workspace id**), then deploy to Vercel + Supabase Pro + Inngest.
 
 ---
 
@@ -378,7 +379,7 @@ Values live **only** in `app/.env.local` (gitignored) and the platform settings 
 | `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY` | blank for dev (Inngest dev server needs none) |
 | `LLM_API_KEY` | 🔐 Anthropic key (user-scoped) |
 | `LLM_MODEL` | `claude-3-5-haiku-latest` |
-| `LLM_WORKSPACE_ID` | **blank** — required for the user-scoped Anthropic key |
+| `LLM_WORKSPACE_ID` | **blank — REQUIRED.** Oli's key is user-scoped (`sk-ant-usr-…`); without this header the Anthropic API returns `400 … must include the anthropic-workspace-id header`. Ask Oli for the workspace id (Console → Settings → Workspace). |
 | `LEAD_CAPTURE_WEBHOOK` / `LEAD_CAPTURE_LIST_ID` | blank (leads → Sharpflow ClickUp CRM, pending) |
 | `TOKEN_ENCRYPTION_KEY` | 🔐 32-byte AES-256-GCM key |
 | `NEXT_PUBLIC_MOCK` | `0` (real mode). Set `1` to preview the mock demo. |
@@ -419,53 +420,61 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 
 ## 13. Verified state / real results
 
-- `app` **`npm test`** → 11/11 pass. **`npm run build`** → clean (15 routes). **`tsc`** clean.
+- `app` **`npm test`** → 20/20 pass (scoring engine + PDF). **`tsc`** clean. (`npm run build` clean as of the last committed state.)
 - **Schema** applied and reachable (REST 200 on all 6 tables).
-- **PDF** route returns HTTP 200, `application/pdf`, ~646 KB.
+- **PDF** route returns HTTP 200, `application/pdf`, ~649 KB.
 - **Real scans** of `SHARPFLOW CONSULTING DEMO SPACE` (30 members · 21 Spaces · 113 Lists · 705 tasks):
   - Scan `07986738-…` → **81/100 (B)** *(before calibration — inflated)*
   - Scan `cb46dc14-…` → **68/100 (C)**
-  - Scan `42137fcf-…` → **62/100 (C), 6/7 categories measured, 14 findings (4 High)** *(current)*
-    - Categories: Architecture **64**, Workflow **75**, Data & Governance **45**, Operational **60**,
-      Adoption **Not measured (excluded)**, Platform Utilisation **100**, Reporting Readiness **35**.
-    - Real metrics: overdue 22% · stale 0% · due-date coverage 39% · ownership coverage **16%** ·
-      fragmented Lists 58% · dormant Lists 30% · custom fields **218** (completion 24%, 32% never
-      filled) · unused statuses 4 · WIP 23.5 open/person · distinct workflows 21 · time logged 0.9%.
+  - Scan `42137fcf-…` → **62/100 (C), 6/7 categories measured, 14 findings (4 High)** *(before metric coverage)*
+  - Scan `60dc0ea2-…` → **65/100 (C), 7/7 categories measured, 20 findings (4 High, 2 Opportunity)** *(current)*
+    - Categories: Architecture **64** · Workflow **68** · Data & Governance **45** · Operational **66** ·
+      Adoption **83** *(now scored)* · Platform Utilisation **93** *(honest, was 100)* · Reporting **35**.
+    - New findings now firing: duplicate status names, inactive members (60%), comment frequency
+      (0/week), Views (1.9/Space), time tracking (1% → Opportunity), Goals (0 → Opportunity).
 - **Dev connection id:** `b88fe19c-f505-46f0-8544-5ab5b02793c0` (team `90141283722`).
 
 ---
 
 ## 14. Open issues & remaining work
 
-**Scoring / metrics (no Oli needed)**
-1. **Platform Utilisation = 100 is too flattering.** Views (30% of its weight) aren't measured yet,
-   and the time-tracking band (`<= 0` → Opportunity) doesn't fire at 0.9%. Fix: read Views per Space
-   (`GET /space/{id}/view`) and agree a tighter time-tracking threshold with Oli.
-2. **Adoption & Activity is excluded** ("Not measured") because inactive members, activity
-   concentration and comment frequency aren't derived yet. Implement those to score it.
-3. More signals to add: duplicate status names, avg time-in-status (ClickApp), missing required
-   fields, Custom Task Types / Docs / Goals usage.
-4. Refine **`openSubtasksUnderClosedPct`** (needs parent status lookup) — currently not set.
+**Done 06 Oct 2026 (local, uncommitted)**
+1. ✅ **Platform Utilisation no longer flatters:** Views per Space are read (`GET /space/{id}/view`),
+   and the time-tracking band is now `< 5% → Opportunity` (a **deviation** from Oli's literal
+   "0 logged in 90d" — confirm with him). Demo score dropped 100 → 93.
+2. ✅ **Adoption & Activity is now scored** (coverage 7/7): inactive members (activity inferred from
+   task creator/assignee dates + commenters), activity concentration, comment frequency (sampled
+   ≤60 recently-updated tasks), dormant Spaces.
+3. ✅ Added signals: duplicate status names, missing required Custom Fields, open subtasks under
+   closed parents; insight-only Goals + Custom Task Types are now read.
+4. ✅ **Bug fixed:** Next.js cached Supabase's internal GETs, so `/api/scans/[id]` froze on its first
+   response (progress never advanced — would break production). Fixed with a no-store fetch in
+   `lib/supabase/server.ts`.
+5. ✅ Owner/Admin **limited-coverage banner** implemented (role resolved from `/team`, flag on
+   `ScanResult`).
 
-**AI**
-5. Wire the real AI summary: add Oli's Anthropic **workspace id** (`LLM_WORKSPACE_ID`) or ask for a
-   **workspace-scoped key**. Until then the report uses templated text.
+**Remaining**
+6. **AI summary:** Oli's key arrived 06 Oct but is **user-scoped** → still needs `LLM_WORKSPACE_ID`.
+   Until then the report uses templated text (the fallback now logs the reason).
+7. **`avgTimeInStatusDays`** still unmeasured (needs the Time in Status ClickApp) — left `undefined`
+   so the coverage rule handles it.
+8. **Docs** utilisation stays "not measurable" (the Docs API is v3-only).
 
 **OAuth**
-6. ClickUp OAuth still fails platform-side; re-test after ClickUp fixes it and/or on the real HTTPS
+9. ClickUp OAuth still fails platform-side; re-test after ClickUp fixes it and/or on the real HTTPS
    domain. Keep the dev-token route strictly non-production.
 
 **Deploy**
-7. Deploy to **Vercel** (Root Directory = `app`), add env vars, register the **production redirect
+10. Deploy to **Vercel** (Root Directory = `app`), add env vars, register the **production redirect
    URL** on the ClickUp app, point **`health.sharpflowconsulting.com`** (one CNAME), sync **Inngest
    Cloud**, then verify the live flow.
 
 **Leads / CRM**
-8. Wire **lead capture → Sharpflow's ClickUp CRM List** (needs the target List + token/webhook).
+11. Wire **lead capture → Sharpflow's ClickUp CRM List** (needs the target List + token/webhook).
 
 **Housekeeping**
-9. The GitHub repo is **public** — consider making it private.
-10. The ClickUp **client secret** and Anthropic key were shared in chat → consider **rotating** before
+12. The GitHub repo is **public** — consider making it private.
+13. The ClickUp **client secret** and Anthropic key were shared in chat → consider **rotating** before
     launch.
 
 ---
@@ -474,7 +483,8 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 
 - **A test workspace** — ✅ done (both workspaces added; demo used).
 - **The CRM List** (name/link) that leads should be created in.
-- **Anthropic workspace id** (or a workspace-scoped API key).
+- **Anthropic workspace id** — key received 06 Oct (`sk-ant-usr-…`) but it is **user-scoped**, so the
+  **workspace id** is still needed (or a workspace-scoped key) before the AI summary works.
 - **Domain** decision (`health.sharpflowconsulting.com`) → add the CNAME at deploy.
 - **Production redirect URL** to add to the ClickUp app (sent at deploy time).
 
