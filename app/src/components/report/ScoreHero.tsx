@@ -63,6 +63,15 @@ export default function ScoreHero({ result }: { result: ScanResult }) {
             </span>
           </div>
 
+          {result.coverageLimited && (
+            <div className="mt-5 flex items-start gap-3 rounded-xl border border-[#E0A800]/40 bg-[#E0A800]/10 px-4 py-3">
+              <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#E0A800]/25 font-mono text-[11px] text-[#8A6D00]">!</span>
+              <p className="text-sm text-txt-muted">
+                <span className="text-txt-primary">Limited coverage.</span> This scan was run by a user who is not a workspace Owner or Admin, so some structure may be hidden and a few categories may read as &ldquo;Not measured&rdquo;. Reconnect as an Owner/Admin for a full report.
+              </p>
+            </div>
+          )}
+
           <motion.h2 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }} className="mt-6 font-display text-2xl font-semibold tracking-display text-txt-primary sm:text-3xl">
             {result.summaryHeadline}
           </motion.h2>

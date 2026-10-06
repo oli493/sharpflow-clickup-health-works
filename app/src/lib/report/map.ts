@@ -16,6 +16,7 @@ export interface MapInput {
   metrics: Metrics
   utilisation: MapUtilisation[]
   scannedAt?: string
+  coverageLimited?: boolean
 }
 
 const PCT_KEYS = new Set([
@@ -41,7 +42,8 @@ const METRIC_LABEL: Record<string, string> = {
 const DRILL: Record<string, string> = {
   overdue_rate: 'overdue', stale_rate: 'stale', fragmented_lists: 'dormant-lists', dormant_lists: 'dormant-lists',
   unused_statuses: 'unused-statuses', custom_field_count: 'custom-fields', cf_completion: 'custom-fields',
-  cf_never_filled: 'custom-fields', missing_required_cf: 'missing-due', inactive_members: 'quiet-seats',
+  cf_never_filled: 'custom-fields', missing_required_cf: 'custom-fields', inactive_members: 'inactive-members',
+  duplicate_statuses: 'duplicate-statuses', views: 'views', dormant_spaces: 'dormant-spaces',
 }
 
 function fmtValue(metricKey: string, v: number): { metric: string; label: string } {
@@ -82,13 +84,13 @@ function chipsFor(key: string, m: Metrics, ws: MapInput['workspace']): CategoryM
       add('wipPerPerson', 'Open / person')
       break
     case 'adoption':
-      add('inactiveMemberPct', 'Inactive members', 'quiet-seats')
+      add('inactiveMemberPct', 'Inactive members', 'inactive-members')
       add('guestRatio', 'Guests')
-      add('commentsPerUserPerWeek', 'Comments / user / wk')
+      add('dormantSpaces', 'Dormant Spaces', 'dormant-spaces')
       break
     case 'utilisation':
       add('timeTrackedPct', 'Time tracking')
-      add('viewsPerSpace', 'Views / Space')
+      add('viewsPerSpace', 'Views / Space', 'views')
       add('dependenciesUsed', 'Dependencies')
       break
     case 'reporting':
@@ -208,6 +210,7 @@ export function toScanResult(input: MapInput): ScanResult {
     findingsSummary: counts,
     findings,
     coverage: engine.coverage,
+    coverageLimited: input.coverageLimited ?? false,
     performingWell,
     utilisation: input.utilisation,
     aiSummary: summary.ai,

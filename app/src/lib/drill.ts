@@ -77,6 +77,42 @@ export const DATASET_META: Record<string, DatasetMeta> = {
       { key: 'lastActivity', label: 'Last activity', align: 'right' },
     ],
   },
+  views: {
+    title: 'Saved Views',
+    subtitle: 'Views defined per Space',
+    columns: [
+      { key: 'view', label: 'View' },
+      { key: 'space', label: 'Space' },
+      { key: 'type', label: 'Type', align: 'right' },
+    ],
+  },
+  'dormant-spaces': {
+    title: 'Dormant Spaces',
+    subtitle: 'Spaces with no task activity in 90+ days',
+    columns: [
+      { key: 'space', label: 'Space' },
+      { key: 'lists', label: 'Lists', align: 'right' },
+      { key: 'tasks', label: 'Tasks', align: 'right' },
+      { key: 'lastActivity', label: 'Last activity', align: 'right' },
+    ],
+  },
+  'inactive-members': {
+    title: 'Inactive members',
+    subtitle: 'Members with no task or comment activity in the last 30 days',
+    columns: [
+      { key: 'member', label: 'Member' },
+      { key: 'role', label: 'Role' },
+      { key: 'lastActivity', label: 'Last activity', align: 'right' },
+    ],
+  },
+  'duplicate-statuses': {
+    title: 'Duplicate status names',
+    subtitle: 'Status names reused with different types across Spaces',
+    columns: [
+      { key: 'status', label: 'Status' },
+      { key: 'types', label: 'Types', align: 'right' },
+    ],
+  },
 }
 
 export const SPACE_COLUMNS: DrillColumn[] = [

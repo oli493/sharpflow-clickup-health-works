@@ -1,10 +1,14 @@
 import type {
+  ClickUpComment,
   ClickUpCustomField,
+  ClickUpCustomItem,
   ClickUpFolder,
+  ClickUpGoal,
   ClickUpList,
   ClickUpSpace,
   ClickUpTask,
   ClickUpTeam,
+  ClickUpView,
 } from './types'
 
 const API = 'https://api.clickup.com/api/v2'
@@ -105,5 +109,25 @@ export class ClickUpClient {
       for (const t of tasks) yield t
       if (last_page || tasks.length === 0) break
     }
+  }
+
+  /** Views defined at the Space level (saved Views). */
+  getViews(spaceId: string): Promise<{ views: ClickUpView[] }> {
+    return this.request(`/space/${spaceId}/view`)
+  }
+
+  /** Goals for a workspace (used as an insight signal only). */
+  getGoals(teamId: string): Promise<{ goals: ClickUpGoal[] }> {
+    return this.request(`/team/${teamId}/goal`)
+  }
+
+  /** Custom Task Types for a workspace (insight signal only). */
+  getCustomTaskTypes(teamId: string): Promise<{ custom_items: ClickUpCustomItem[] }> {
+    return this.request(`/team/${teamId}/custom_item`)
+  }
+
+  /** Comments on a task (sampled — one call per task). */
+  getTaskComments(taskId: string): Promise<{ comments: ClickUpComment[] }> {
+    return this.request(`/task/${taskId}/comment`)
   }
 }

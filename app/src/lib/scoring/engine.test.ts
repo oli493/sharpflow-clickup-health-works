@@ -104,3 +104,78 @@ describe('grade bands', () => {
     expect(grade(40)).toBe('F')
   })
 })
+
+const HEALTHY: Record<string, number> = {
+  avgTasksPerList: 30,
+  dormantListsPct: 0,
+  fragmentedListsPct: 0,
+  emptyFoldersPct: 0,
+  statusesPerWorkflow: 6,
+  unusedStatuses: 0,
+  duplicateStatusNames: 0,
+  customFieldCount: 40,
+  cfCompletionPct: 0.9,
+  cfZeroFilledPct: 0,
+  missingRequiredCfPct: 0,
+  overdueRate: 0.02,
+  staleRate: 0.01,
+  openSubtasksUnderClosedPct: 0,
+  creationMinusCompletion: -50,
+  wipPerPerson: 4,
+  inactiveMemberPct: 0.02,
+  guestRatio: 0.05,
+  activityConcentration: 0.3,
+  commentsPerUserPerWeek: 4,
+  dormantSpaces: 0,
+  timeTrackedPct: 0.5,
+  viewsPerSpace: 5,
+  dependenciesUsed: 10,
+  dueDateCoverage: 0.98,
+  ownershipCoverage: 0.97,
+  estimateCoverage: 0.8,
+  distinctWorkflows: 2,
+}
+
+describe('platform utilisation — time-tracking band (< 5% Opportunity)', () => {
+  const sig = CATEGORIES.find((c) => c.key === 'utilisation')!.signals.find((s) => s.key === 'time_tracking')!
+  it('flags light time tracking as Opportunity', () => {
+    expect(severityFor(sig, 0)).toBe('opportunity')
+    expect(severityFor(sig, 0.03)).toBe('opportunity')
+  })
+  it('does not flag once 5% or more is logged', () => {
+    expect(severityFor(sig, 0.05)).toBeNull()
+    expect(severityFor(sig, 0.4)).toBeNull()
+  })
+})
+
+describe('newly-measured signals produce findings', () => {
+  const keysFor = (m: Record<string, number>) => evaluate({ ...HEALTHY, ...m }).findings.map((f) => f.signalKey)
+  it('duplicate status names', () => {
+    expect(keysFor({ duplicateStatusNames: 2 })).toContain('duplicate_statuses')
+  })
+  it('missing required Custom Fields', () => {
+    expect(keysFor({ missingRequiredCfPct: 0.4 })).toContain('missing_required_cf')
+  })
+  it('open subtasks under closed parents', () => {
+    expect(keysFor({ openSubtasksUnderClosedPct: 0.1 })).toContain('subtasks_under_closed')
+  })
+  it('inactive members', () => {
+    expect(keysFor({ inactiveMemberPct: 0.5 })).toContain('inactive_members')
+  })
+  it('dormant Spaces', () => {
+    expect(keysFor({ dormantSpaces: 2 })).toContain('dormant_spaces')
+  })
+  it('too few Views per Space', () => {
+    expect(keysFor({ viewsPerSpace: 1 })).toContain('views')
+  })
+})
+
+describe('adoption is scored once its signals are measurable', () => {
+  it('reaches full 7/7 category coverage with complete metrics', () => {
+    const res = evaluate(HEALTHY)
+    const adoption = res.categories.find((c) => c.key === 'adoption')!
+    expect(adoption.scored).toBe(true)
+    expect(res.coverage.scored).toBe(7)
+    expect(res.coverage.total).toBe(7)
+  })
+})

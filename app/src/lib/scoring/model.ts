@@ -107,7 +107,7 @@ export const CATEGORIES: Category[] = [
     name: 'Platform Utilisation',
     weight: 10,
     signals: [
-      { key: 'time_tracking', name: 'Time tracking in use', feasibility: 'yes', weight: 35, metricKey: 'timeTrackedPct', threshold: '0 logged in 90d', bands: [{ cmp: '<=', value: 0, severity: 'opportunity' }] },
+      { key: 'time_tracking', name: 'Time tracking in use', feasibility: 'yes', weight: 35, metricKey: 'timeTrackedPct', threshold: '< 5% of tasks logged', bands: [{ cmp: '<', value: 0.05, severity: 'opportunity' }] },
       { key: 'views', name: 'Views', feasibility: 'yes', weight: 30, metricKey: 'viewsPerSpace', threshold: '< 2 Views per Space', bands: [{ cmp: '<', value: 2, severity: 'low' }] },
       { key: 'dependencies', name: 'Dependencies / Relationships', feasibility: 'yes', weight: 35, metricKey: 'dependenciesUsed', threshold: 'none used', bands: [{ cmp: '<=', value: 0, severity: 'low' }] },
       // Insight-only (no score impact):

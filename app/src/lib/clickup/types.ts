@@ -38,6 +38,7 @@ export interface ClickUpTask {
   date_closed?: string
   due_date?: string | null
   assignees?: { id: number; username: string }[]
+  creator?: { id: number; username: string }
   parent?: string | null
 }
 
@@ -45,6 +46,31 @@ export interface ClickUpCustomField {
   id: string
   name: string
   type: string
+  /** Present on some field payloads; true when the field is required. */
+  required?: boolean
+}
+
+export interface ClickUpView {
+  id: string
+  name: string
+  type: string
+}
+
+export interface ClickUpGoal {
+  id: string
+  name: string
+}
+
+export interface ClickUpCustomItem {
+  id: string
+  name: string
+}
+
+export interface ClickUpComment {
+  id: string
+  comment_text?: string
+  user?: { id: number; username?: string }
+  date?: string
 }
 
 export interface ClickUpMember {

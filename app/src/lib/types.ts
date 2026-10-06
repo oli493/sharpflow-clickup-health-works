@@ -67,6 +67,8 @@ export interface ScanResult {
   findingsSummary: { critical: number; high: number; opportunity: number; total: number }
   findings: FindingResult[]
   coverage: { scored: number; total: number }
+  /** True when the connecting user is not an Owner/Admin, so visibility is limited. */
+  coverageLimited: boolean
   performingWell: { title: string; detail: string }[]
   utilisation: { capability: string; status: UtilStatus; detail: string }[]
   aiSummary: string[]

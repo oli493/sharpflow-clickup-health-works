@@ -32,6 +32,7 @@ export const MOCK_SCAN: ScanResult = {
     'Structure and reporting are strong, but overdue work and data hygiene are dragging the score down. Fixing overdue tasks and retiring unused fields would lift the workspace meaningfully without new process overhead.',
   projectedScore: 84,
   coverage: { scored: 7, total: 7 },
+  coverageLimited: false,
   categories: [
     { key: 'architecture', name: 'Architecture & Structure', score: 81, scored: true, blurb: 'Hierarchy is broadly healthy, with a few fragmented Lists worth consolidating.', metrics: [
       { label: 'Spaces', value: '6' }, { label: 'Avg tasks / List', value: '66.4', tone: 'up' }, { label: 'Dormant Lists', value: '23', tone: 'down', drill: 'dormant-lists' } ] },
