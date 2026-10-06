@@ -51,7 +51,7 @@ function buildPrompt(input: SummaryInput): string {
 export async function generateExecutiveSummary(input: SummaryInput): Promise<string[]> {
   const apiKey = process.env.LLM_API_KEY
   if (!apiKey) throw new Error('LLM_API_KEY is not set')
-  const model = process.env.LLM_MODEL ?? 'claude-3-5-haiku-latest'
+  const model = process.env.LLM_MODEL ?? 'claude-haiku-4-5-20251001'
 
   const headers: Record<string, string> = {
     'content-type': 'application/json',

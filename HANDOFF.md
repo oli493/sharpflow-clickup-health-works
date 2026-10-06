@@ -357,7 +357,8 @@ commented in 30 days.
   `coverage.scored / coverage.total`).
 
 **AI:** the LLM only writes the executive summary (grounded, no invented numbers); it never computes
-scores. Model: `claude-3-5-haiku-latest`.
+scores. Model: `claude-haiku-4-5-20251001` (Claude Haiku 4.5 — the old `claude-3-5-haiku-latest`
+alias is retired and returns 404).
 
 ---
 
@@ -378,7 +379,7 @@ Values live **only** in `app/.env.local` (gitignored) and the platform settings 
 | `SUPABASE_DB_URL` | blank (schema applied via SQL Editor) |
 | `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY` | blank for dev (Inngest dev server needs none) |
 | `LLM_API_KEY` | 🔐 Anthropic key (user-scoped) |
-| `LLM_MODEL` | `claude-3-5-haiku-latest` |
+| `LLM_MODEL` | `claude-haiku-4-5-20251001` |
 | `LLM_WORKSPACE_ID` | **blank — REQUIRED.** Oli's key is user-scoped (`sk-ant-usr-…`); without this header the Anthropic API returns `400 … must include the anthropic-workspace-id header`. Ask Oli for the workspace id (Console → Settings → Workspace). |
 | `LEAD_CAPTURE_WEBHOOK` / `LEAD_CAPTURE_LIST_ID` | blank (leads → Sharpflow ClickUp CRM, pending) |
 | `TOKEN_ENCRYPTION_KEY` | 🔐 32-byte AES-256-GCM key |
