@@ -20,7 +20,7 @@ export const DATASET_META: Record<string, DatasetMeta> = {
   },
   stale: {
     title: 'Stale tasks',
-    subtitle: 'Open tasks untouched for 90+ days',
+    subtitle: 'Open tasks untouched for 30+ days',
     columns: [
       { key: 'task', label: 'Task' },
       { key: 'owner', label: 'Owner' },
@@ -69,7 +69,7 @@ export const DATASET_META: Record<string, DatasetMeta> = {
   },
   'dormant-lists': {
     title: 'Dormant Lists',
-    subtitle: 'Active Lists with fewer than 5 tasks and no recent activity',
+    subtitle: 'Lists with no task activity in 60+ days',
     columns: [
       { key: 'list', label: 'List' },
       { key: 'space', label: 'Space' },

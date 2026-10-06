@@ -51,6 +51,36 @@ export function severityFor(signal: Signal, value: number): Severity | null {
   return null
 }
 
+/** A fired signal always deducts at least this fraction of its severity value. */
+const MAGNITUDE_BASELINE = 0.5
+
+const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
+
+/** Crossing a threshold deducts the baseline; the ceiling reaches the full severity. */
+const ramp = (normalised: number) => MAGNITUDE_BASELINE + (1 - MAGNITUDE_BASELINE) * clamp01(normalised)
+
+/**
+ * How far past the threshold the workspace is, normalised to [0,1] against the
+ * configured ceiling (higher-is-worse) or floor (lower-is-worse). Penalties then
+ * scale with how much of the workspace is affected, not just whether it crossed.
+ */
+export function magnitudeFor(signal: Signal, value: number): number {
+  // The least-severe band's value is the entry threshold.
+  const threshold = signal.bands[signal.bands.length - 1]?.value ?? 0
+
+  if (signal.direction === 'lower_worse') {
+    if (signal.floor === undefined) return 1
+    const span = threshold - signal.floor
+    if (span <= 0) return 1
+    return ramp((threshold - value) / span)
+  }
+
+  if (signal.ceiling === undefined) return 1
+  const span = signal.ceiling - threshold
+  if (span <= 0) return 1
+  return ramp((value - threshold) / span)
+}
+
 export function grade(score: number): string {
   if (score >= 85) return 'A'
   if (score >= 75) return 'B'
@@ -110,7 +140,7 @@ export function evaluate(metrics: Metrics): ScoreResult {
         })
       }
 
-      const health = 1 - (sev ? SEVERITY_PENALTY[sev] : 0)
+      const health = 1 - (sev ? SEVERITY_PENALTY[sev] * magnitudeFor(sig, value) : 0)
       weighted += sig.weight * health
     }
 

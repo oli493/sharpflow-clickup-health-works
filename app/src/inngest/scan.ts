@@ -142,7 +142,9 @@ export const scanWorkspace = inngest.createFunction(
       let totalTasks = 0
       let openTasks = 0
       let overdue = 0
-      let stale = 0
+      let stale30 = 0
+      let stale60 = 0
+      let stale90 = 0
       let noDue = 0
       let noAssignee = 0
       let withEstimate = 0
@@ -279,17 +281,22 @@ export const scanWorkspace = inngest.createFunction(
                 })
               }
             }
-            if (updatedMs && now - updatedMs > STALE_DAYS * DAY) {
-              stale += 1
-              staleInList += 1
-              if (sampleStale.length < SAMPLE_ROWS) {
-                sampleStale.push({
-                  task: task.name,
-                  owner: task.assignees?.[0]?.username ?? '— none —',
-                  space: list.spaceName,
-                  lastUpdate: `${Math.round((now - (updatedMs ?? now)) / DAY)}d ago`,
-                  status: task.status?.status ?? '—',
-                })
+            if (updatedMs) {
+              const age = now - updatedMs
+              if (age >= STALE_DAYS * DAY) stale90 += 1
+              else if (age >= 60 * DAY) stale60 += 1
+              else if (age >= 30 * DAY) stale30 += 1
+              if (age >= 30 * DAY) {
+                staleInList += 1
+                if (sampleStale.length < SAMPLE_ROWS) {
+                  sampleStale.push({
+                    task: task.name,
+                    owner: task.assignees?.[0]?.username ?? '— none —',
+                    space: list.spaceName,
+                    lastUpdate: `${Math.round(age / DAY)}d ago`,
+                    status: task.status?.status ?? '—',
+                  })
+                }
               }
             }
           }
@@ -329,7 +336,18 @@ export const scanWorkspace = inngest.createFunction(
       const total = totalTasks || 1
       const open = openTasks || 1
       const fragmented = perList.filter((l) => l.open_tasks < 5).length
-      const dormant = perList.filter((l) => l.open_tasks === 0).length
+      const listCount = perList.length || 1
+      let dormant60 = 0
+      let dormant90 = 0
+      for (const l of perList) {
+        if (!l.tasks || !l.last_activity) {
+          dormant90 += 1 // Lists with no tasks / no activity ever count as 90d+
+          continue
+        }
+        const age = now - l.last_activity
+        if (age >= STALE_DAYS * DAY) dormant90 += 1
+        else if (age >= 60 * DAY) dormant60 += 1
+      }
       const statusCounts: number[] = (structure.statusCounts as number[]).filter((n) => n > 0)
       const avgStatuses = statusCounts.length ? statusCounts.reduce((s: number, n: number) => s + n, 0) / statusCounts.length : 0
 
@@ -341,14 +359,17 @@ export const scanWorkspace = inngest.createFunction(
       const metrics: Metrics = {
         avgTasksPerList: totalTasks / (perList.length || 1),
         fragmentedListsPct: fragmented / (perList.length || 1),
-        dormantListsPct: dormant / (perList.length || 1),
+        dormantList60to90Pct: dormant60 / listCount,
+        dormantList90PlusPct: dormant90 / listCount,
         emptyFoldersPct: structure.folderCount ? structure.emptyFolders / structure.folderCount : 0,
         statusesPerWorkflow: avgStatuses,
         duplicateStatusNames: structure.duplicateStatusNames,
         overdueRate: overdue / open,
-        staleRate: stale / open,
+        stale30to60Pct: stale30 / open,
+        stale60to90Pct: stale60 / open,
+        stale90PlusPct: stale90 / open,
         openSubtasksUnderClosedPct: subtasksTotal ? subtasksUnderClosed / subtasksTotal : undefined,
-        creationMinusCompletion: created90 - completed90,
+        creationVsCompletionPct: (created90 - completed90) / (created90 || 1),
         wipPerPerson: structure.memberCount ? openTasks / structure.memberCount : openTasks,
         guestRatio: structure.memberCount ? structure.guestCount / structure.memberCount : 0,
         unusedStatuses: (structure.allStatusNames as string[]).filter((s) => !usedStatus.has(s)).length,
@@ -436,7 +457,7 @@ export const scanWorkspace = inngest.createFunction(
     const metrics: Metrics = {
       ...scan.metrics,
       activityConcentration: maxSpaceTasks / totalTasksAll,
-      dormantSpaces,
+      dormantSpacesPct: structure.spaceCount ? dormantSpaces / structure.spaceCount : 0,
       inactiveMemberPct: memberCount ? (memberCount - activeMemberCount) / memberCount : 0,
       commentsPerUserPerWeek: activeMemberCount ? activity.totalComments / activeMemberCount / (ACTIVE_DAYS / 7) : 0,
     }

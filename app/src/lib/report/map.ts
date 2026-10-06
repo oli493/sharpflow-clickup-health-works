@@ -1,5 +1,6 @@
 import { CATEGORIES } from '../scoring/model'
 import { CATEGORY_BLURB, SEVERITY_LABEL, SIGNAL_COPY } from '../scoring/copy'
+import { colonify } from '../text'
 import type { Metrics, ScoreResult } from '../scoring/engine'
 import type { CategoryMetric, CategoryResult, FindingResult, ScanResult, Severity, UtilStatus } from '../types'
 
@@ -20,27 +21,30 @@ export interface MapInput {
 }
 
 const PCT_KEYS = new Set([
-  'dormantListsPct', 'fragmentedListsPct', 'emptyFoldersPct', 'cfCompletionPct', 'cfZeroFilledPct',
-  'missingRequiredCfPct', 'overdueRate', 'staleRate', 'openSubtasksUnderClosedPct', 'inactiveMemberPct',
-  'guestRatio', 'activityConcentration', 'dueDateCoverage', 'ownershipCoverage', 'estimateCoverage', 'timeTrackedPct',
+  'dormantList60to90Pct', 'dormantList90PlusPct', 'fragmentedListsPct', 'emptyFoldersPct', 'cfCompletionPct', 'cfZeroFilledPct',
+  'missingRequiredCfPct', 'overdueRate', 'stale30to60Pct', 'stale60to90Pct', 'stale90PlusPct', 'openSubtasksUnderClosedPct',
+  'inactiveMemberPct', 'guestRatio', 'activityConcentration', 'dormantSpacesPct', 'creationVsCompletionPct',
+  'dueDateCoverage', 'ownershipCoverage', 'estimateCoverage', 'timeTrackedPct',
 ])
 
 const METRIC_LABEL: Record<string, string> = {
-  overdueRate: 'of active tasks overdue', staleRate: 'of open tasks stale 90d+',
-  openSubtasksUnderClosedPct: 'open subtasks under closed parents', dormantListsPct: 'of Lists dormant',
+  overdueRate: 'of active tasks overdue', stale30to60Pct: 'of open tasks stale 30-60d', stale60to90Pct: 'of open tasks stale 60-90d',
+  stale90PlusPct: 'of open tasks stale 90d+', openSubtasksUnderClosedPct: 'open subtasks under closed parents',
+  dormantList60to90Pct: 'of Lists dormant 60-90d', dormantList90PlusPct: 'of Lists dormant 90d+',
   fragmentedListsPct: 'of Lists under 5 tasks', emptyFoldersPct: 'empty Folders', cfCompletionPct: 'average field completion',
   cfZeroFilledPct: 'fields at 0% filled', missingRequiredCfPct: 'missing required fields', customFieldCount: 'Custom Fields',
   inactiveMemberPct: 'members inactive 30d', guestRatio: 'of users are guests', activityConcentration: 'activity in one Space',
-  commentsPerUserPerWeek: 'comments / active user / week', dormantSpaces: 'dormant Spaces', timeTrackedPct: 'tasks with time logged',
+  commentsPerUserPerWeek: 'comments / active user / week', dormantSpacesPct: 'of Spaces dormant', timeTrackedPct: 'tasks with time logged',
   viewsPerSpace: 'Views per Space', dependenciesUsed: 'dependencies / links', dueDateCoverage: 'open tasks with a due date',
   ownershipCoverage: 'open tasks with an assignee', estimateCoverage: 'open tasks with an estimate', distinctWorkflows: 'distinct workflows',
   avgTasksPerList: 'average tasks per List', statusesPerWorkflow: 'statuses per workflow', unusedStatuses: 'unused statuses',
-  duplicateStatusNames: 'duplicate status names', avgTimeInStatusDays: 'days in an active status', creationMinusCompletion: 'more created than completed (90d)',
+  duplicateStatusNames: 'duplicate status names', avgTimeInStatusDays: 'days in an active status', creationVsCompletionPct: 'more created than completed (90d)',
   wipPerPerson: 'open tasks per person',
 }
 
 const DRILL: Record<string, string> = {
-  overdue_rate: 'overdue', stale_rate: 'stale', fragmented_lists: 'dormant-lists', dormant_lists: 'dormant-lists',
+  overdue_rate: 'overdue', stale_30_60: 'stale', stale_60_90: 'stale', stale_90plus: 'stale',
+  dormant_list_60: 'dormant-lists', dormant_list_90: 'dormant-lists', fragmented_lists: 'dormant-lists',
   unused_statuses: 'unused-statuses', custom_field_count: 'custom-fields', cf_completion: 'custom-fields',
   cf_never_filled: 'custom-fields', missing_required_cf: 'custom-fields', inactive_members: 'inactive-members',
   duplicate_statuses: 'duplicate-statuses', views: 'views', dormant_spaces: 'dormant-spaces',
@@ -65,7 +69,7 @@ function chipsFor(key: string, m: Metrics, ws: MapInput['workspace']): CategoryM
   switch (key) {
     case 'architecture':
       add('avgTasksPerList', 'Avg tasks / List')
-      add('dormantListsPct', 'Dormant Lists', 'dormant-lists')
+      add('dormantList90PlusPct', 'Dormant Lists 90d+', 'dormant-lists')
       add('fragmentedListsPct', 'Fragmented Lists', 'dormant-lists')
       break
     case 'workflow':
@@ -80,13 +84,13 @@ function chipsFor(key: string, m: Metrics, ws: MapInput['workspace']): CategoryM
       break
     case 'operational':
       add('overdueRate', 'Overdue rate', 'overdue')
-      add('staleRate', 'Stale 90d+', 'stale')
+      add('stale90PlusPct', 'Stale 90d+', 'stale')
       add('wipPerPerson', 'Open / person')
       break
     case 'adoption':
       add('inactiveMemberPct', 'Inactive members', 'inactive-members')
       add('guestRatio', 'Guests')
-      add('dormantSpaces', 'Dormant Spaces', 'dormant-spaces')
+      add('dormantSpacesPct', 'Dormant Spaces', 'dormant-spaces')
       break
     case 'utilisation':
       add('timeTrackedPct', 'Time tracking')
@@ -129,7 +133,7 @@ function buildSummary(input: MapInput): { headline: string; body: string; projec
     `If the top issues are resolved, the projected score rises to approximately ${projected}/100.`,
   ].filter(Boolean)
 
-  return { headline, body, projected, ai }
+  return { headline: colonify(headline), body: colonify(body), projected, ai: ai.map(colonify) }
 }
 
 /** Convert the deterministic engine result (+ context) into the report UI model. */
@@ -141,7 +145,7 @@ export function toScanResult(input: MapInput): ScanResult {
     name: c.name,
     score: c.score,
     scored: c.scored,
-    blurb: CATEGORY_BLURB[c.key] ?? '',
+    blurb: colonify(CATEGORY_BLURB[c.key] ?? ''),
     metrics: chipsFor(c.key, metrics, workspace),
   }))
 
@@ -158,8 +162,8 @@ export function toScanResult(input: MapInput): ScanResult {
         severity: f.severity,
         metric,
         metricLabel: label || f.threshold,
-        explanation: copy?.explanation ?? `${f.title} is outside the configured threshold (${f.threshold}).`,
-        recommendation: copy?.recommendation ?? 'Review this area and bring it back within threshold.',
+        explanation: colonify(copy?.explanation ?? `${f.title} is outside the configured threshold (${f.threshold}).`),
+        recommendation: colonify(copy?.recommendation ?? 'Review this area and bring it back within threshold.'),
         drill: DRILL[f.signalKey],
       }
     })
@@ -175,7 +179,7 @@ export function toScanResult(input: MapInput): ScanResult {
     .filter((c) => c.scored)
     .sort((a, b) => b.score - a.score)
     .slice(0, 4)
-    .map((c) => ({ title: `${c.name} is strong`, detail: `${CATEGORY_BLURB[c.key] ?? ''} Scored ${c.score}/100.` }))
+    .map((c) => ({ title: `${c.name} is strong`, detail: colonify(`${CATEGORY_BLURB[c.key] ?? ''} Scored ${c.score}/100.`) }))
 
   const rules = CATEGORIES.flatMap((c) =>
     c.signals

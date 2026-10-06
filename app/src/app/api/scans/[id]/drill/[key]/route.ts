@@ -39,17 +39,18 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string;
   if (!meta) return NextResponse.json({ error: 'unknown_dataset' }, { status: 404 })
 
   if (key === 'dormant-lists') {
+    const cutoff = new Date(Date.now() - 60 * 86_400_000).toISOString()
     const { data } = await admin
       .from('list_stats')
       .select('*')
       .eq('scan_id', params.id)
-      .lt('open_tasks', 5)
-      .order('tasks', { ascending: true })
+      .or(`last_activity.is.null,last_activity.lt.${cutoff}`)
+      .order('last_activity', { ascending: true, nullsFirst: true })
     const rows = (data ?? []).map((r) => ({
       list: r.list_name,
       space: r.space_name ?? '—',
-      tasks: r.open_tasks ?? r.tasks,
-      lastActivity: r.last_activity ? new Date(r.last_activity).toLocaleDateString('en-GB') : '—',
+      tasks: r.tasks,
+      lastActivity: r.last_activity ? new Date(r.last_activity).toLocaleDateString('en-GB') : '— none —',
     }))
     return NextResponse.json({ key, ...meta, unit: `${rows.length} Lists`, rows })
   }

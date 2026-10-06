@@ -74,6 +74,26 @@ export const SIGNAL_COPY: Record<string, Copy> = {
     explanation: 'A meaningful share of open tasks have not been updated in over 90 days.',
     recommendation: 'Introduce a stale rule that flags old tasks for triage, and archive what is no longer relevant.',
   },
+  stale_30_60: {
+    explanation: 'A share of open tasks have not been updated in 30 to 60 days, an early sign of drift.',
+    recommendation: 'Triage tasks untouched for a month and close, reschedule or reassign them.',
+  },
+  stale_60_90: {
+    explanation: 'A share of open tasks have not been updated in 60 to 90 days, indicating stalled work.',
+    recommendation: 'Review work untouched for two months and decide what to close or reassign.',
+  },
+  stale_90plus: {
+    explanation: 'A share of open tasks have not been updated in over 90 days and are effectively abandoned.',
+    recommendation: 'Archive or close long-abandoned tasks and add a stale rule to prevent rebuild.',
+  },
+  dormant_list_60: {
+    explanation: 'Some Lists have had no task activity for 60 to 90 days.',
+    recommendation: 'Review dormant Lists and merge or archive the ones no longer needed.',
+  },
+  dormant_list_90: {
+    explanation: 'Some Lists have had no task activity for over 90 days.',
+    recommendation: 'Archive dormant Lists or re-engage the teams that own them.',
+  },
   subtasks_under_closed: {
     explanation: 'Open subtasks sit under parents already marked Done/Closed, hiding live work.',
     recommendation: 'Reopen the parent tasks or promote the remaining subtasks.',

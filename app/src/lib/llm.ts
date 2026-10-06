@@ -4,6 +4,8 @@
  * findings/metrics into a plain-English executive summary.
  */
 
+import { colonify } from './text'
+
 interface SummaryInput {
   workspace: string
   overall: number
@@ -19,6 +21,7 @@ const SYSTEM = [
   'Write a concise executive summary for a business owner.',
   'Rules: never invent numbers — only use the values provided; never change or re-derive the scores;',
   'be specific about the biggest risks and the strongest areas; keep it plain, business-friendly English.',
+  'Never use em dashes, en dashes or double hyphens (—, –, --); use a colon instead.',
   'Return 3 to 4 short paragraphs, separated by blank lines, with no headings, bullets or markdown.',
 ].join(' ')
 
@@ -80,6 +83,6 @@ export async function generateExecutiveSummary(input: SummaryInput): Promise<str
   const text = (data.content?.[0]?.text ?? '').trim()
   return text
     .split(/\n{2,}/)
-    .map((p) => p.trim())
+    .map((p) => colonify(p.trim()))
     .filter(Boolean)
 }
