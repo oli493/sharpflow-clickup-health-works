@@ -138,6 +138,7 @@ export function toScanResult(input: MapInput): ScanResult {
     key: c.key,
     name: c.name,
     score: c.score,
+    scored: c.scored,
     blurb: CATEGORY_BLURB[c.key] ?? '',
     metrics: chipsFor(c.key, metrics, workspace),
   }))
@@ -169,6 +170,7 @@ export function toScanResult(input: MapInput): ScanResult {
   }
 
   const performingWell = [...engine.categories]
+    .filter((c) => c.scored)
     .sort((a, b) => b.score - a.score)
     .slice(0, 4)
     .map((c) => ({ title: `${c.name} is strong`, detail: `${CATEGORY_BLURB[c.key] ?? ''} Scored ${c.score}/100.` }))
@@ -205,6 +207,7 @@ export function toScanResult(input: MapInput): ScanResult {
     categories,
     findingsSummary: counts,
     findings,
+    coverage: engine.coverage,
     performingWell,
     utilisation: input.utilisation,
     aiSummary: summary.ai,

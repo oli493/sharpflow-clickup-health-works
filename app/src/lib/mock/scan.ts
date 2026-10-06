@@ -31,20 +31,21 @@ export const MOCK_SCAN: ScanResult = {
   summaryBody:
     'Structure and reporting are strong, but overdue work and data hygiene are dragging the score down. Fixing overdue tasks and retiring unused fields would lift the workspace meaningfully without new process overhead.',
   projectedScore: 84,
+  coverage: { scored: 7, total: 7 },
   categories: [
-    { key: 'architecture', name: 'Architecture & Structure', score: 81, blurb: 'Hierarchy is broadly healthy, with a few fragmented Lists worth consolidating.', metrics: [
+    { key: 'architecture', name: 'Architecture & Structure', score: 81, scored: true, blurb: 'Hierarchy is broadly healthy, with a few fragmented Lists worth consolidating.', metrics: [
       { label: 'Spaces', value: '6' }, { label: 'Avg tasks / List', value: '66.4', tone: 'up' }, { label: 'Dormant Lists', value: '23', tone: 'down', drill: 'dormant-lists' } ] },
-    { key: 'workflow', name: 'Workflow Design', score: 77, blurb: 'Status workflows are consistent, though some duplication and unused statuses remain.', metrics: [
+    { key: 'workflow', name: 'Workflow Design', score: 77, scored: true, blurb: 'Status workflows are consistent, though some duplication and unused statuses remain.', metrics: [
       { label: 'Statuses / Space', value: '6.4' }, { label: 'Unused statuses', value: '9', tone: 'down', drill: 'unused-statuses' }, { label: 'Avg time in status', value: '4.2d' } ] },
-    { key: 'governance', name: 'Data & Governance', score: 62, blurb: 'Custom Field sprawl and low completion rates are pulling the score down.', metrics: [
+    { key: 'governance', name: 'Data & Governance', score: 62, scored: true, blurb: 'Custom Field sprawl and low completion rates are pulling the score down.', metrics: [
       { label: 'Custom Fields', value: '148', tone: 'down', drill: 'custom-fields' }, { label: 'Field completion', value: '43%', tone: 'down', drill: 'custom-fields' }, { label: '0% filled fields', value: '61', tone: 'down', drill: 'custom-fields' } ] },
-    { key: 'operational', name: 'Operational Health', score: 68, blurb: 'A high overdue rate and a growing stale backlog are the biggest risks.', metrics: [
+    { key: 'operational', name: 'Operational Health', score: 68, scored: true, blurb: 'A high overdue rate and a growing stale backlog are the biggest risks.', metrics: [
       { label: 'Overdue rate', value: '24.1%', tone: 'down', drill: 'overdue' }, { label: 'Stale 90d+', value: '612', tone: 'down', drill: 'stale' }, { label: 'Completion rate', value: '84%', tone: 'up' } ] },
-    { key: 'adoption', name: 'Adoption & Activity', score: 79, blurb: 'Most members are active, with a handful of quiet members and Spaces.', metrics: [
+    { key: 'adoption', name: 'Adoption & Activity', score: 79, scored: true, blurb: 'Most members are active, with a handful of quiet members and Spaces.', metrics: [
       { label: 'Active members', value: '37 / 42', tone: 'up' }, { label: 'Inactive members', value: '5', tone: 'down', drill: 'quiet-seats' }, { label: 'Guests', value: '38%' } ] },
-    { key: 'utilisation', name: 'Platform Utilisation', score: 57, blurb: 'Several high-value ClickUp capabilities are enabled but barely used.', metrics: [
+    { key: 'utilisation', name: 'Platform Utilisation', score: 57, scored: true, blurb: 'Several high-value ClickUp capabilities are enabled but barely used.', metrics: [
       { label: 'Scored signals', value: '3', tone: 'down' }, { label: 'Time tracking', value: '6%', tone: 'down' }, { label: 'Views / Space', value: '1.8', tone: 'down' } ] },
-    { key: 'reporting', name: 'Reporting Readiness', score: 83, blurb: 'Strong due-date and ownership coverage — reporting data is in good shape.', metrics: [
+    { key: 'reporting', name: 'Reporting Readiness', score: 83, scored: true, blurb: 'Strong due-date and ownership coverage — reporting data is in good shape.', metrics: [
       { label: 'Due-date coverage', value: '91%', tone: 'up' }, { label: 'Ownership', value: '88%', tone: 'up' }, { label: 'Estimate coverage', value: '34%', tone: 'down' } ] },
   ],
   findingsSummary: { critical: 4, high: 11, opportunity: 24, total: 39 },

@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { decrypt } from '@/lib/crypto'
 import { evaluate, type Metrics } from '@/lib/scoring/engine'
 import { toScanResult, type MapUtilisation } from '@/lib/report/map'
+import { generateExecutiveSummary } from '@/lib/llm'
 
 const DAY = 86_400_000
 const STALE_DAYS = 90
@@ -72,6 +73,7 @@ export const scanWorkspace = inngest.createFunction(
         emptyFolders,
         lists: lists.slice(0, SAMPLE_LIST_LIMIT),
         statusCounts: activeSpaces.map((s) => s.statuses?.length ?? 0),
+        allStatusNames: Array.from(new Set(activeSpaces.flatMap((s) => (s.statuses ?? []).map((x) => x.status)))),
       }
     })
 
@@ -91,6 +93,10 @@ export const scanWorkspace = inngest.createFunction(
       let subtasksUnderClosed = 0
       let created90 = 0
       let completed90 = 0
+      const usedStatus = new Set<string>()
+      const fieldStats = new Map<string, { filled: number; slots: number }>()
+      let cfSlots = 0
+      let cfFilled = 0
 
       const perList: {
         list_id: string
@@ -124,6 +130,22 @@ export const scanWorkspace = inngest.createFunction(
           const createdMs = task.date_created ? Number(task.date_created) : null
           const closedMs = task.date_closed ? Number(task.date_closed) : null
           if (updatedMs && updatedMs > lastActivity) lastActivity = updatedMs
+          usedStatus.add(task.status?.status ?? '')
+          const cfs = (task as { custom_fields?: { id: string; value: unknown }[] }).custom_fields
+          if (cfs) {
+            for (const cf of cfs) {
+              const st = fieldStats.get(cf.id) ?? { filled: 0, slots: 0 }
+              st.slots += 1
+              cfSlots += 1
+              const v = cf.value
+              const empty = v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0)
+              if (!empty) {
+                st.filled += 1
+                cfFilled += 1
+              }
+              fieldStats.set(cf.id, st)
+            }
+          }
 
           if (task.parent) subtasksTotal += 1
           if (!closedType) {
@@ -205,19 +227,21 @@ export const scanWorkspace = inngest.createFunction(
         statusesPerWorkflow: avgStatuses,
         overdueRate: overdue / open,
         staleRate: stale / open,
-        openSubtasksUnderClosedPct: subtasksTotal ? subtasksUnderClosed / subtasksTotal : 0,
         creationMinusCompletion: created90 - completed90,
         wipPerPerson: structure.memberCount ? openTasks / structure.memberCount : openTasks,
-        inactiveMemberPct: 0, // refined when per-member activity is aggregated
         guestRatio: structure.memberCount ? structure.guestCount / structure.memberCount : 0,
-        activityConcentration: 0, // refined once per-space activity is aggregated
-        dormantSpaces: 0,
+        unusedStatuses: (structure.allStatusNames as string[]).filter((s) => !usedStatus.has(s)).length,
         timeTrackedPct: withTime / total,
         dependenciesUsed: withDependency,
         dueDateCoverage: 1 - noDue / total,
         ownershipCoverage: 1 - noAssignee / total,
         estimateCoverage: withEstimate / total,
         distinctWorkflows: structure.spaceCount,
+        customFieldCount: fieldStats.size || undefined,
+        cfCompletionPct: cfSlots ? cfFilled / cfSlots : undefined,
+        cfZeroFilledPct: fieldStats.size
+          ? [...fieldStats.values()].filter((s) => s.filled === 0).length / fieldStats.size
+          : undefined,
       }
 
       return { metrics, perList, samples: { overdue: sampleOverdue, stale: sampleStale, 'missing-due': sampleMissingDue } }
@@ -263,6 +287,28 @@ export const scanWorkspace = inngest.createFunction(
       utilisation,
     })
 
+    // AI executive summary — explains the engine; falls back to templated text on failure.
+    const finalReport = await step.run('ai-summary', async () => {
+      try {
+        const ai = await generateExecutiveSummary({
+          workspace: report.workspaceName,
+          overall: report.overallScore,
+          grade: report.overallGrade,
+          categories: report.categories.map((c) => ({ name: c.name, score: c.score })),
+          findings: report.findings.map((f) => ({
+            title: f.title,
+            severity: f.severity,
+            metric: f.metric,
+            metricLabel: f.metricLabel,
+          })),
+          performingWell: report.performingWell.map((p) => ({ title: p.title })),
+        })
+        return { ...report, aiSummary: ai.length ? ai : report.aiSummary }
+      } catch {
+        return report
+      }
+    })
+
     await step.run('store-list-stats', async () => {
       if ((scan.perList as any[]).length) {
         await admin.from('list_stats').insert(
@@ -297,7 +343,7 @@ export const scanWorkspace = inngest.createFunction(
         grade: result.grade,
         metrics: scan.metrics,
         category_scores: result.categories,
-        result: report,
+        result: finalReport,
       }).eq('id', scanId)
 
       if (result.findings.length) {

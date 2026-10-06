@@ -16,6 +16,20 @@ export default function Home() {
         <p className="mt-4 font-mono text-[11px] uppercase tracking-widest text-txt-faint">
           Read-only · OAuth
         </p>
+
+        {process.env.NODE_ENV !== 'production' && (
+          <div className="mt-6 border-t border-line pt-4">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-txt-faint">
+              Dev only · ClickUp OAuth is currently broken on ClickUp's side
+            </p>
+            <a
+              href="/api/clickup/dev-connect"
+              className="mt-2 inline-block font-mono text-[11px] uppercase tracking-widest text-magenta hover:underline"
+            >
+              Connect with personal token
+            </a>
+          </div>
+        )}
       </div>
     </main>
   )

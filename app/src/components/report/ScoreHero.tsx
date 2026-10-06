@@ -58,7 +58,9 @@ export default function ScoreHero({ result }: { result: ScanResult }) {
             <Chip>
               <span className="h-1.5 w-1.5 rounded-full bg-sev-good" /> Scan complete
             </Chip>
-            <span className="font-mono text-[11px] text-txt-faint">{result.activeTasks.toLocaleString()} tasks analysed</span>
+            <span className="font-mono text-[11px] text-txt-faint">
+              {result.activeTasks.toLocaleString()} tasks · {result.coverage.scored}/{result.coverage.total} categories measured
+            </span>
           </div>
 
           <motion.h2 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }} className="mt-6 font-display text-2xl font-semibold tracking-display text-txt-primary sm:text-3xl">

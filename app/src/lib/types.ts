@@ -13,6 +13,7 @@ export interface CategoryResult {
   key: string
   name: string
   score: number
+  scored: boolean
   blurb: string
   metrics: CategoryMetric[]
 }
@@ -65,6 +66,7 @@ export interface ScanResult {
   categories: CategoryResult[]
   findingsSummary: { critical: number; high: number; opportunity: number; total: number }
   findings: FindingResult[]
+  coverage: { scored: number; total: number }
   performingWell: { title: string; detail: string }[]
   utilisation: { capability: string; status: UtilStatus; detail: string }[]
   aiSummary: string[]

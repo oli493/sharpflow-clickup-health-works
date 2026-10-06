@@ -26,9 +26,30 @@ function MiniRing({ value, color }: { value: number; color: string }) {
 }
 
 function CatCard({ cat, index }: { cat: CategoryResult; index: number }) {
-  const band = scoreBand(cat.score)
   const { ref, style } = useTilt<HTMLDivElement>({ max: 8 })
   const { open } = useDrill()
+  const band = scoreBand(cat.score)
+
+  if (!cat.scored) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 22 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6, delay: (index % 4) * 0.06 }}
+      >
+        <div className="flex h-full flex-col justify-between rounded-xl2 border border-dashed border-line-strong bg-white/40 p-5">
+          <span className="font-mono text-[11px] uppercase tracking-widest text-txt-faint">Not measured</span>
+          <div>
+            <h3 className="font-display text-[15px] font-medium leading-snug text-txt-primary/70">{cat.name}</h3>
+            <p className="mt-2 text-[12.5px] leading-relaxed text-txt-faint">
+              Not enough measurable data through the ClickUp API yet — excluded from the score.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    )
+  }
 
   return (
     <motion.div

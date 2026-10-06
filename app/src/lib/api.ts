@@ -15,6 +15,21 @@ async function json<T>(res: Response): Promise<T> {
   return (await res.json()) as T
 }
 
+export interface ConnectionSummary {
+  id: string
+  clickup_username?: string
+  clickup_email?: string
+  workspaces: { id: string; name: string }[]
+}
+
+export async function getConnection(id: string): Promise<ConnectionSummary> {
+  if (IS_MOCK) {
+    return { id, workspaces: [{ id: 'demo', name: 'Northwind Creative' }] }
+  }
+  const res = await fetch(`/api/connections/${id}`, { cache: 'no-store' })
+  return json<ConnectionSummary>(res)
+}
+
 export async function createScan(input: {
   connectionId: string
   teamId: string
