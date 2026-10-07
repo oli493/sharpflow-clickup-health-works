@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Button, Chip, Eyebrow, IconArrow, IconCheck, Panel } from '@/components/ui'
+import { Button, Chip, Eyebrow, IconCheck, Panel } from '@/components/ui'
 import { createScan, getConnection, IS_MOCK, type ConnectionSummary } from '@/lib/api'
 
 const EXCLUDE_OPTIONS = [
@@ -138,7 +138,7 @@ function Inner() {
           <span><span className="text-txt-faint">Score</span> 7 categories</span>
           <span><span className="text-txt-faint">Findings</span> configurable rules</span>
         </div>
-        <Button onClick={run} size="lg" disabled={busy || !selected} icon={<IconArrow className="h-5 w-5" />}>
+        <Button onClick={run} size="lg" disabled={busy || !selected} arrow>
           {busy ? 'Starting…' : 'Run audit'}
         </Button>
       </Panel>

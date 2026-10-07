@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Button, Chip, IconArrow, IconCheck, Panel } from '../ui'
+import { Button, Chip, IconCheck, Panel } from '../ui'
 import { postLead } from '../../lib/api'
 
 export default function LeadCapture({ scanId }: { scanId: string }) {
@@ -64,7 +64,7 @@ export default function LeadCapture({ scanId }: { scanId: string }) {
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Button
               onClick={() => window.open('https://calendly.com/oli-sharpflowconsulting/clickup-health-discussion', '_blank')}
-              icon={<IconArrow className="h-4 w-4" />}
+              arrow
               className="px-6 py-3 text-sm"
             >
               Book a call with Sharpflow

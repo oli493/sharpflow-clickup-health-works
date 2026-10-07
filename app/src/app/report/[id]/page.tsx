@@ -184,7 +184,7 @@ export default function ReportPage() {
         <Panel className="p-8 text-center">
           <h2 className="font-display text-2xl font-semibold text-brand-ink">Report unavailable</h2>
           <p className="mt-2 text-sm text-txt-muted">{error}</p>
-          <Link href="/workspaces" className="btn-primary mt-6 inline-flex">Run a scan</Link>
+          <Link href="/workspaces" className="btn-primary btn-arrow pr-2.5 mt-6 inline-flex">Run a scan</Link>
         </Panel>
       </div>
     )

@@ -16,10 +16,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'ghost'
   size?: 'md' | 'lg'
   icon?: ReactNode
+  arrow?: boolean
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = 'primary', size = 'md', icon, className, children, ...rest },
+  { variant = 'primary', size = 'md', icon, arrow, className, children, ...rest },
   ref,
 ) {
   return (
@@ -28,6 +29,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       className={cn(
         variant === 'primary' ? 'btn-primary' : 'btn-ghost',
         size === 'lg' && 'px-8 py-4 text-base',
+        arrow && 'btn-arrow pr-2.5',
         className,
       )}
       {...rest}

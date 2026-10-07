@@ -98,21 +98,23 @@
   }
 
   .btn-primary {
-    @apply btn bg-magenta py-2.5 pl-7 pr-2.5 text-[15px] font-semibold text-white;
+    @apply btn bg-magenta px-7 py-3 text-[15px] font-semibold text-white;
     box-shadow: 0 18px 40px -16px rgba(224, 16, 114, 0.5);
   }
-  .btn-primary::after {
+  .btn-primary:hover {
+    @apply bg-magenta-hover;
+    transform: translateY(-1px);
+    box-shadow: 0 24px 50px -16px rgba(224, 16, 114, 0.65);
+  }
+
+  /* Opt-in circular arrow badge (matches the Sharpflow site CTAs). */
+  .btn-arrow::after {
     content: '';
     @apply ml-2 h-9 w-9 shrink-0 rounded-full bg-white;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23E01072' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E");
     background-size: 17px 17px;
     background-position: center;
     background-repeat: no-repeat;
-  }
-  .btn-primary:hover {
-    @apply bg-magenta-hover;
-    transform: translateY(-1px);
-    box-shadow: 0 24px 50px -16px rgba(224, 16, 114, 0.65);
   }
 
   .btn-ghost {

@@ -11,7 +11,7 @@ export default function Home() {
           improvements related to your structure, workflow, data, operations, adoption and
           utilisation.
         </p>
-        <a href="/api/clickup/oauth" className="btn-primary mt-8">
+        <a href="/api/clickup/oauth" className="btn-primary btn-arrow pr-2.5 mt-8">
           Connect ClickUp
         </a>
         <p className="mt-4 font-mono text-[11px] uppercase tracking-widest text-txt-faint">
