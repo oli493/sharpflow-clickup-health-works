@@ -21,8 +21,8 @@ export default function Cursor() {
     }
 
     const loop = () => {
-      ringPos.x += (pos.x - ringPos.x) * 0.4
-      ringPos.y += (pos.y - ringPos.y) * 0.4
+      ringPos.x += (pos.x - ringPos.x) * 0.7
+      ringPos.y += (pos.y - ringPos.y) * 0.7
       if (dot.current) dot.current.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`
       if (ring.current) {
         ring.current.style.transform = `translate3d(${ringPos.x}px, ${ringPos.y}px, 0) scale(${hover ? 1.9 : 1})`

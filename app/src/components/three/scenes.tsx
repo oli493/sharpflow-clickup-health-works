@@ -124,22 +124,20 @@ function seeded(n: number) {
   return x - Math.floor(x)
 }
 
-const SPACES = [
-  { name: 'Studio Ops', health: 0.86, lists: 5 },
-  { name: 'Client Delivery', health: 0.72, lists: 6 },
-  { name: 'Sales & Pipeline', health: 0.9, lists: 4 },
-  { name: 'Marketing', health: 0.46, lists: 5 },
-  { name: 'Finance', health: 0.62, lists: 3 },
-  { name: 'People & Culture', health: 0.8, lists: 4 },
-]
+export interface TopologySpace {
+  name: string
+  health: number
+  lists: { name: string; health: number; tasks?: number }[]
+}
 
-function buildGraph() {
+function buildGraph(spaces: TopologySpace[]) {
   const nodes: Node[] = [{ pos: [0, 0, 0], size: 0.34, color: '#E01072', kind: 'hub', name: 'Workspace' }]
   const links: { a: THREE.Vector3; b: THREE.Vector3; strong: boolean }[] = []
   const hub = new THREE.Vector3(0, 0, 0)
+  const spaceCount = Math.max(1, spaces.length)
 
-  SPACES.forEach((space, i) => {
-    const angle = (i / SPACES.length) * Math.PI * 2
+  spaces.forEach((space, i) => {
+    const angle = (i / spaceCount) * Math.PI * 2
     const radius = 2.5
     const y = Math.sin(i * 1.7) * 0.7
     const sp = new THREE.Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius)
@@ -147,34 +145,36 @@ function buildGraph() {
     nodes.push({ pos: [sp.x, sp.y, sp.z], size: 0.2, color, kind: 'space', name: space.name })
     links.push({ a: hub, b: sp, strong: true })
 
-    for (let l = 0; l < space.lists; l++) {
-      const a2 = (l / space.lists) * Math.PI * 2 + seeded(i * 7 + l) * 0.8
+    const listCount = Math.max(1, space.lists.length)
+    space.lists.forEach((list, l) => {
+      const a2 = (l / listCount) * Math.PI * 2 + seeded(i * 7 + l) * 0.8
       const r2 = 0.75 + seeded(i * 3 + l * 2) * 0.7
       const lp = new THREE.Vector3(
         sp.x + Math.cos(a2) * r2,
         sp.y + (seeded(i + l * 5) - 0.5) * 1.2,
         sp.z + Math.sin(a2) * r2,
       )
-      const lh = 0.4 + seeded(i * 11 + l) * 0.6
+      const lh = list.health
       nodes.push({
         pos: [lp.x, lp.y, lp.z],
         size: 0.055 + lh * 0.06,
         color: lh >= 0.75 ? '#7DE2B0' : lh >= 0.5 ? '#FFD166' : '#FF5C6C',
         kind: 'list',
+        name: space.name,
       })
       links.push({ a: sp, b: lp, strong: false })
-    }
+    })
   })
 
   return { nodes, links }
 }
 
-export function TopologyGraph({ onSelect }: { onSelect?: (name: string) => void }) {
+export function TopologyGraph({ onSelect, spaces = [] }: { onSelect?: (name: string) => void; spaces?: TopologySpace[] }) {
   const group = useRef<THREE.Group>(null)
   const nodeRefs = useRef<THREE.Mesh[]>([])
   const linkRefs = useRef<any[]>([])
   const progress = useRef(0)
-  const { nodes, links } = useMemo(buildGraph, [])
+  const { nodes, links } = useMemo(() => buildGraph(spaces), [spaces])
   const speed = demoMode ? 1 / 2.4 : 1 / 1.3
 
   useFrame((state, delta) => {

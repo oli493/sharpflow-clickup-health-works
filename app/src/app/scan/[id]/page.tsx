@@ -65,7 +65,7 @@ export default function ScanPage() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="text-center">
           <Eyebrow className="mb-3">Step 3 · Background audit running</Eyebrow>
           <h1 className="font-display text-3xl font-semibold tracking-display text-txt-primary sm:text-4xl">Reading the workspace</h1>
-          <p className="mt-3 text-[15px] text-txt-muted">This runs on our servers: you can safely close the browser.</p>
+          <p className="mt-3 text-[15px] text-txt-muted">This runs on our servers. Your report will appear here automatically when it's ready: keep this tab open (or bookmark this link).</p>
         </motion.div>
 
         <Panel className="mt-10 grid gap-10 p-8 md:grid-cols-[auto_1fr] md:items-center md:p-10">

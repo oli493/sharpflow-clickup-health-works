@@ -71,6 +71,19 @@ export async function getScanStatus(id: string): Promise<ScanStatus> {
   return json<ScanStatus>(res)
 }
 
+export interface StructureSpace {
+  name: string
+  health: number
+  lists: { name: string; health: number; tasks: number }[]
+}
+
+export async function getStructure(scanId: string): Promise<StructureSpace[]> {
+  if (IS_MOCK) return []
+  const res = await fetch(`/api/scans/${scanId}/structure`, { cache: 'no-store' })
+  const data = await json<{ spaces: StructureSpace[] }>(res)
+  return data.spaces ?? []
+}
+
 export async function getDrill(scanId: string, key: string): Promise<DrillDataset> {
   if (IS_MOCK) return getMockDrill(key)
   const res = await fetch(`/api/scans/${scanId}/drill/${encodeURIComponent(key)}`, { cache: 'no-store' })

@@ -15,7 +15,7 @@ import LeadCapture from '@/components/report/LeadCapture'
 import PdfPreview from '@/components/report/PdfPreview'
 import SectionNav from '@/components/report/SectionNav'
 import { DrillProvider, useDrill } from '@/components/report/Drill'
-import { getScanStatus } from '@/lib/api'
+import { getScanStatus, getStructure, type StructureSpace } from '@/lib/api'
 import type { ScanResult } from '@/lib/types'
 
 const TopologyView = lazy(() => import('@/components/three/views').then((m) => ({ default: m.TopologyView })))
@@ -27,31 +27,52 @@ const legend = [
   { color: '#E01072', label: 'Workspace hub' },
 ]
 
-function TopologyPanel() {
+function TopologyPanel({ spaces }: { spaces: StructureSpace[] | null }) {
   const { open } = useDrill()
+  const empty = spaces !== null && spaces.length === 0
   return (
     <Panel className="relative min-h-[420px] overflow-hidden p-0">
-      <Suspense fallback={<div className="grid h-full place-items-center font-mono text-xs text-txt-faint">Loading 3D visualisation…</div>}>
-        <TopologyView className="absolute inset-0" onSelect={(name) => open(`space:${name}`)} fallback={<div className="grid h-full place-items-center font-mono text-xs text-txt-faint">3D visualisation</div>} />
-      </Suspense>
-      <div className="pointer-events-none absolute left-6 top-5">
-        <Chip><span className="h-1.5 w-1.5 rounded-full bg-magenta" /> Click a Space to drill in</Chip>
-      </div>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap gap-4 bg-gradient-to-t from-white to-transparent px-6 pb-5 pt-12">
-        {legend.map((l) => (
-          <span key={l.label} className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-txt-muted">
-            <span className="h-2 w-2 rounded-full" style={{ background: l.color, boxShadow: `0 0 8px ${l.color}` }} />
-            {l.label}
-          </span>
-        ))}
-      </div>
+      {empty ? (
+        <div className="grid h-full min-h-[420px] place-items-center px-8 text-center">
+          <div>
+            <p className="font-display text-lg text-txt-primary">No structure to display</p>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-txt-muted">
+              This scan didn't read any Spaces or Lists. Connect as a workspace Owner or Admin to see the full structure.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <Suspense fallback={<div className="grid h-full place-items-center font-mono text-xs text-txt-faint">Loading 3D visualisation…</div>}>
+            <TopologyView className="absolute inset-0" onSelect={(name) => open(`space:${name}`)} spaces={spaces ?? undefined} fallback={<div className="grid h-full place-items-center font-mono text-xs text-txt-faint">3D visualisation</div>} />
+          </Suspense>
+          <div className="pointer-events-none absolute left-6 top-5">
+            <Chip><span className="h-1.5 w-1.5 rounded-full bg-magenta" /> Click a Space to drill in</Chip>
+          </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap gap-4 bg-gradient-to-t from-white to-transparent px-6 pb-5 pt-12">
+            {legend.map((l) => (
+              <span key={l.label} className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-txt-muted">
+                <span className="h-2 w-2 rounded-full" style={{ background: l.color, boxShadow: `0 0 8px ${l.color}` }} />
+                {l.label}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
     </Panel>
   )
 }
 
 function Dashboard({ id, result }: { id: string; result: ScanResult }) {
   const [pdfOpen, setPdfOpen] = useState(false)
+  const [spaces, setSpaces] = useState<StructureSpace[] | null>(null)
   const insufficient = result.activeTasks === 0 || result.coverage.scored <= 2
+
+  useEffect(() => {
+    getStructure(id)
+      .then(setSpaces)
+      .catch(() => setSpaces([]))
+  }, [id])
 
   if (insufficient) {
     return (
@@ -132,7 +153,7 @@ function Dashboard({ id, result }: { id: string; result: ScanResult }) {
         <section id="structure" className="mt-16 scroll-mt-[150px]">
           <SectionHeading index="02" title="Structure at a glance" hint="Hierarchy health" />
           <div className="mt-7 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-            <TopologyPanel />
+            <TopologyPanel spaces={spaces} />
             <div className="space-y-5">
               <Panel className="p-6">
                 <Eyebrow className="mb-3">What you're seeing</Eyebrow>
@@ -182,14 +203,6 @@ function Dashboard({ id, result }: { id: string; result: ScanResult }) {
         <section className="mt-16">
           <LeadCapture scanId={id} />
         </section>
-
-        <Panel className="mt-10 flex flex-col items-start justify-between gap-6 p-8 sm:flex-row sm:items-center">
-          <div>
-            <Chip className="mb-3"><span className="h-1.5 w-1.5 rounded-full bg-magenta" /> White-label ready</Chip>
-            <h3 className="font-display text-xl text-txt-primary">Your brand, your report, your client's score.</h3>
-          </div>
-          <Button onClick={() => setPdfOpen(true)} icon={<IconDownload className="h-4 w-4" />}>See branded report</Button>
-        </Panel>
 
         <PdfPreview result={result} scanId={id} open={pdfOpen} onClose={() => setPdfOpen(false)} />
       </div>

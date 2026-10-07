@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import Scene3D from './Scene3D'
-import { HealthOrb, ScoreGauge, TopologyGraph } from './scenes'
+import { HealthOrb, ScoreGauge, TopologyGraph, type TopologySpace } from './scenes'
 
 export function OrbView({ className, fallback }: { className?: string; fallback?: ReactNode }) {
   return (
@@ -32,14 +32,16 @@ export function TopologyView({
   className,
   fallback,
   onSelect,
+  spaces,
 }: {
   className?: string
   fallback?: ReactNode
   onSelect?: (name: string) => void
+  spaces?: TopologySpace[]
 }) {
   return (
     <Scene3D className={className} camera={{ position: [0, 1.2, 7], fov: 46 }} fallback={fallback}>
-      <TopologyGraph onSelect={onSelect} />
+      <TopologyGraph onSelect={onSelect} spaces={spaces} />
     </Scene3D>
   )
 }
