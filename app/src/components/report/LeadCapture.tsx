@@ -76,8 +76,8 @@ export default function LeadCapture({ scanId }: { scanId: string }) {
         <div className="relative grid place-items-center overflow-hidden border-t border-line bg-brand-ink/[0.03] p-8 lg:border-l lg:border-t-0">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_80%_0%,rgba(95,186,149,0.28),transparent_60%)]" />
           <motion.div initial={{ opacity: 0, scale: 0.9, y: 10 }} whileInView={{ opacity: 1, scale: 1, y: 0 }} viewport={{ once: true }} transition={{ type: 'spring', stiffness: 200, damping: 20 }} className="relative text-center">
-            <img src="/brand/partner-badge.png" alt="ClickUp Sapphire Partner 2026" className="mx-auto h-40 w-auto drop-shadow-[0_16px_30px_rgba(23,52,53,0.25)]" />
-            <div className="mt-4 font-mono text-[10px] uppercase tracking-eyebrow text-txt-faint">ClickUp Sapphire Partner</div>
+            <img src="/brand/partner-badge.png" alt="ClickUp Diamond Partner 2026" className="mx-auto h-40 w-auto drop-shadow-[0_16px_30px_rgba(23,52,53,0.25)]" />
+            <div className="mt-4 font-mono text-[10px] uppercase tracking-eyebrow text-txt-faint">ClickUp Diamond Partner</div>
           </motion.div>
         </div>
       </div>

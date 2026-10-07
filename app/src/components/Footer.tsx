@@ -8,7 +8,7 @@ export default function Footer() {
         <div className="flex items-center gap-5">
           <img
             src="/brand/partner-badge.png"
-            alt="ClickUp Sapphire Partner 2026"
+            alt="ClickUp Diamond Partner 2026"
             className="h-12 w-auto"
           />
           <span className="font-mono text-[10px] uppercase tracking-widest text-txt-faint">

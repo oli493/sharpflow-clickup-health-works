@@ -1,39 +1,50 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Eyebrow, IconCheck, Panel } from '@/components/ui'
 import { getScanStatus, IS_MOCK } from '@/lib/api'
-import { MOCK_SCAN_STAGES } from '@/lib/mock/scan'
 
 const RADIUS = 78
 const CIRC = 2 * Math.PI * RADIUS
 
-const STAGES = MOCK_SCAN_STAGES
+// Matches the worker's progress stages (see inngest/scan.ts).
+const STAGES = [
+  { label: 'Connecting to ClickUp', detail: 'Secure OAuth · read-only', at: 5 },
+  { label: 'Mapping workspace structure', detail: 'Spaces, Folders and Lists', at: 15 },
+  { label: 'Analysing tasks', detail: 'Pagination · retries · rate limits', at: 35 },
+  { label: 'Sampling activity', detail: 'Comments and member activity', at: 55 },
+  { label: 'Calculating Health Score', detail: '7 weighted categories', at: 70 },
+  { label: 'Generating recommendations', detail: 'AI explanations grounded in metrics', at: 90 },
+  { label: 'Report ready', detail: '', at: 100 },
+]
+
+function stageIndexFor(pct: number) {
+  return STAGES.reduce((acc, s, i) => (pct >= s.at ? i : acc), 0)
+}
 
 export default function ScanPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const id = params.id
-  const [index, setIndex] = useState(0)
-  const [tasks, setTasks] = useState(0)
+  const [pct, setPct] = useState(0)
+  const [score, setScore] = useState<number | null>(null)
+  const index = stageIndexFor(pct)
   const done = index >= STAGES.length - 1
 
   useEffect(() => {
-    const target = 14217
-    const t = setInterval(() => setTasks((v) => (v + Math.round(target / 34) >= target ? target : v + Math.round(target / 34))), 90)
-    return () => clearInterval(t)
-  }, [])
-
-  useEffect(() => {
     if (IS_MOCK) {
-      if (index >= STAGES.length - 1) {
-        const end = setTimeout(() => router.replace(`/report/${id}`), 1200)
-        return () => clearTimeout(end)
-      }
-      const t = setTimeout(() => setIndex((i) => i + 1), index === 0 ? 900 : 900)
-      return () => clearTimeout(t)
+      let i = 0
+      const t = setInterval(() => {
+        i += 1
+        setPct(Math.min(100, Math.round((i / (STAGES.length - 1)) * 100)))
+        if (i >= STAGES.length - 1) {
+          clearInterval(t)
+          setTimeout(() => router.replace(`/report/${id}`), 1200)
+        }
+      }, 900)
+      return () => clearInterval(t)
     }
 
     // Real mode: poll the scan status.
@@ -42,11 +53,18 @@ export default function ScanPage() {
       try {
         const s = await getScanStatus(id)
         if (!active) return
-        const stageIndex = Math.min(STAGES.length - 1, Math.floor((s.progress / 100) * (STAGES.length - 1)))
-        setIndex(stageIndex)
-        if (s.status === 'complete') router.replace(`/report/${id}`)
-        else if (s.status === 'failed') setIndex(STAGES.length - 1)
-        else setTimeout(poll, 1500)
+        setPct(s.progress ?? 0)
+        if (s.status === 'complete') {
+          setScore(s.result?.overallScore ?? null)
+          setPct(100)
+          setTimeout(() => router.replace(`/report/${id}`), 1400)
+          return
+        }
+        if (s.status === 'failed') {
+          setPct(100)
+          return
+        }
+        setTimeout(poll, 1500)
       } catch {
         if (active) setTimeout(poll, 2000)
       }
@@ -55,9 +73,9 @@ export default function ScanPage() {
     return () => {
       active = false
     }
-  }, [id, router, index])
+  }, [id, router])
 
-  const progress = Math.min(1, (index + 0.35) / STAGES.length)
+  const progress = Math.min(1, pct / 100)
 
   return (
     <div className="mx-auto grid min-h-screen max-w-[980px] place-items-center px-6 pb-16 pt-32">
@@ -83,14 +101,17 @@ export default function ScanPage() {
             </svg>
             <div className="absolute text-center">
               <div className="font-mono text-3xl tabular-nums text-txt-primary">{Math.round(progress * 100)}%</div>
-              <div className="font-mono text-[10px] uppercase tracking-widest text-txt-faint">{tasks.toLocaleString()} tasks</div>
+              <div className="font-mono text-[10px] uppercase tracking-widest text-txt-faint">
+                {done ? (score != null ? `Score ${score}/100` : 'Complete') : 'Audit in progress'}
+              </div>
             </div>
           </div>
 
           <div className="space-y-1.5">
             {STAGES.map((s, i) => {
-              const isDone = i < index
-              const active = i === index
+              const isDone = i < index || (done && i === index)
+              const active = i === index && !done
+              const detail = i === STAGES.length - 1 && score != null ? `Score ${score} / 100` : s.detail
               return (
                 <div key={s.label} className={`flex items-center gap-4 rounded-xl px-4 py-3 transition-colors ${active ? 'bg-brand-ink/[0.05]' : ''}`}>
                   <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border ${isDone ? 'border-sev-good/40 bg-sev-good/15 text-sev-good' : active ? 'border-magenta/50 bg-magenta/10 text-magenta' : 'border-line text-txt-faint'}`}>
@@ -98,7 +119,7 @@ export default function ScanPage() {
                   </span>
                   <span className="flex-1">
                     <span className={`block text-sm ${isDone || active ? 'text-txt-primary' : 'text-txt-faint'}`}>{s.label}</span>
-                    <span className="block font-mono text-[11px] text-txt-faint">{s.detail}</span>
+                    {detail && <span className="block font-mono text-[11px] text-txt-faint">{detail}</span>}
                   </span>
                 </div>
               )
