@@ -8,7 +8,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('scans')
-    .select('id, status, progress, stage, result, error')
+    .select('id, connection_id, status, progress, stage, result, error')
     .eq('id', params.id)
     .single()
 
@@ -16,6 +16,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   return NextResponse.json({
     id: data.id,
+    connectionId: data.connection_id ?? undefined,
     status: data.status,
     progress: data.progress ?? 0,
     stage: data.stage ?? '',

@@ -77,6 +77,7 @@ export interface ScanResult {
 
 export interface ScanStatus {
   id: string
+  connectionId?: string
   status: 'queued' | 'running' | 'complete' | 'failed'
   progress: number
   stage: string

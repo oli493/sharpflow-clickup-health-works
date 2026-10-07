@@ -63,10 +63,11 @@ function TopologyPanel({ spaces }: { spaces: StructureSpace[] | null }) {
   )
 }
 
-function Dashboard({ id, result }: { id: string; result: ScanResult }) {
+function Dashboard({ id, result, connectionId }: { id: string; result: ScanResult; connectionId?: string }) {
   const [pdfOpen, setPdfOpen] = useState(false)
   const [spaces, setSpaces] = useState<StructureSpace[] | null>(null)
   const insufficient = result.activeTasks === 0 || result.coverage.scored <= 2
+  const workspacesHref = connectionId ? `/workspaces?connection=${connectionId}` : '/'
 
   useEffect(() => {
     getStructure(id)
@@ -83,7 +84,7 @@ function Dashboard({ id, result }: { id: string; result: ScanResult }) {
             <h1 className="mt-2 font-display text-2xl font-semibold tracking-display text-txt-primary sm:text-3xl">{result.workspaceName}</h1>
             <div className="mt-2 font-mono text-[11px] text-txt-faint">scanned {result.scannedAt}</div>
           </div>
-          <Link href="/workspaces">
+          <Link href={workspacesHref}>
             <Button variant="ghost" className="px-5 py-3 text-sm">Run another scan</Button>
           </Link>
         </div>
@@ -105,7 +106,7 @@ function Dashboard({ id, result }: { id: string; result: ScanResult }) {
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link href="/"><Button arrow>Connect ClickUp</Button></Link>
-            <Link href="/workspaces"><Button variant="ghost" className="px-5 py-3 text-sm">Choose a workspace</Button></Link>
+            <Link href={workspacesHref}><Button variant="ghost" className="px-5 py-3 text-sm">Choose a workspace</Button></Link>
           </div>
         </Panel>
       </div>
@@ -128,7 +129,7 @@ function Dashboard({ id, result }: { id: string; result: ScanResult }) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/workspaces">
+            <Link href={workspacesHref}>
               <Button variant="ghost" className="px-5 py-3 text-sm">Run another scan</Button>
             </Link>
             <Button onClick={() => setPdfOpen(true)} className="px-6 py-3 text-sm" icon={<IconDownload className="h-4 w-4" />}>Download PDF</Button>
@@ -214,6 +215,7 @@ export default function ReportPage() {
   const params = useParams<{ id: string }>()
   const id = params.id
   const [result, setResult] = useState<ScanResult | null>(null)
+  const [connectionId, setConnectionId] = useState<string | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -221,6 +223,7 @@ export default function ReportPage() {
     getScanStatus(id)
       .then((s) => {
         if (!active) return
+        setConnectionId(s.connectionId)
         if (s.result) setResult(s.result)
         else setError('This scan is not complete yet.')
       })
@@ -236,7 +239,7 @@ export default function ReportPage() {
         <Panel className="p-8 text-center">
           <h2 className="font-display text-2xl font-semibold text-brand-ink">Report unavailable</h2>
           <p className="mt-2 text-sm text-txt-muted">{error}</p>
-          <Link href="/workspaces" className="btn-primary btn-arrow pr-2.5 mt-6 inline-flex">Run a scan</Link>
+          <Link href={connectionId ? `/workspaces?connection=${connectionId}` : '/'} className="btn-primary btn-arrow pr-2.5 mt-6 inline-flex">Run a scan</Link>
         </Panel>
       </div>
     )
@@ -246,5 +249,5 @@ export default function ReportPage() {
     return <div className="grid min-h-screen place-items-center text-sm text-txt-faint">Loading report…</div>
   }
 
-  return <Dashboard id={id} result={result} />
+  return <Dashboard id={id} result={result} connectionId={connectionId} />
 }

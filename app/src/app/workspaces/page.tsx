@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { Button, Chip, Eyebrow, IconCheck, Panel } from '@/components/ui'
 import {
   createScan,
@@ -18,7 +19,7 @@ const AUTO_EXCLUDE = /template|sandbox|demo|test|archive|qa|onboarding/i
 function Inner() {
   const router = useRouter()
   const params = useSearchParams()
-  const connectionId = params.get('connection') ?? 'demo'
+  const connectionId = params.get('connection') ?? ''
 
   const [connection, setConnection] = useState<ConnectionSummary | null>(null)
   const [spaces, setSpaces] = useState<SpaceSummary[]>([])
@@ -27,8 +28,13 @@ function Inner() {
   const [loadingSpaces, setLoadingSpaces] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fatal, setFatal] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!connectionId) {
+      setFatal('No workspace connection was found. Please connect ClickUp to continue.')
+      return
+    }
     if (IS_MOCK) {
       const c = { id: connectionId, workspaces: [{ id: 'demo', name: 'Northwind Creative' }] }
       setConnection(c)
@@ -40,7 +46,7 @@ function Inner() {
         setConnection(c)
         if (c.workspaces?.[0]) setSelected(c.workspaces[0].id)
       })
-      .catch((e) => setError(e.message))
+      .catch(() => setFatal('This connection is no longer available. Please connect ClickUp again.'))
   }, [connectionId])
 
   useEffect(() => {
@@ -75,6 +81,18 @@ function Inner() {
       setError((e as Error).message)
       setBusy(false)
     }
+  }
+
+  if (fatal) {
+    return (
+      <div className="mx-auto grid min-h-[70vh] max-w-2xl place-items-center px-6">
+        <Panel className="p-8 text-center">
+          <h2 className="font-display text-2xl font-semibold text-brand-ink">Connection needed</h2>
+          <p className="mt-2 text-sm text-txt-muted">{fatal}</p>
+          <Link href="/" className="btn-primary btn-arrow pr-2.5 mt-6 inline-flex">Connect ClickUp</Link>
+        </Panel>
+      </div>
+    )
   }
 
   return (
