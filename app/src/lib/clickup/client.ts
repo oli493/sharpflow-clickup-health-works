@@ -130,4 +130,9 @@ export class ClickUpClient {
   getTaskComments(taskId: string): Promise<{ comments: ClickUpComment[] }> {
     return this.request(`/task/${taskId}/comment`)
   }
+
+  /** Create a task in a List (used for lead capture into the Sharpflow CRM). */
+  createTask(listId: string, payload: { name: string; markdown_description?: string; description?: string }): Promise<{ id: string }> {
+    return this.request(`/list/${listId}/task`, { method: 'POST', body: payload })
+  }
 }
