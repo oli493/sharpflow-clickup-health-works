@@ -50,7 +50,7 @@ export class ClickUpClient {
 
       if (res.status === 429 || res.status >= 500) {
         attempt += 1
-        if (attempt > 4) throw new Error(`ClickUp ${res.status} on ${path}`)
+        if (attempt > 6) throw new Error(`ClickUp ${res.status} on ${path}`)
         const retryAfter = Number(res.headers.get('retry-after') ?? '0')
         const waitMs = retryAfter > 0 ? retryAfter * 1000 : Math.min(8000, 2 ** attempt * 400)
         await new Promise((r) => setTimeout(r, waitMs))

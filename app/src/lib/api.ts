@@ -30,6 +30,13 @@ export async function getConnection(id: string): Promise<ConnectionSummary> {
   return json<ConnectionSummary>(res)
 }
 
+export async function getConnectionWorkspaces(id: string): Promise<{ id: string; name: string }[]> {
+  if (IS_MOCK) return [{ id: 'demo', name: 'Northwind Creative' }]
+  const res = await fetch(`/api/connections/${id}/workspaces`, { cache: 'no-store' })
+  const data = await json<{ workspaces: { id: string; name: string }[] }>(res)
+  return data.workspaces ?? []
+}
+
 export interface SpaceSummary {
   id: string
   name: string

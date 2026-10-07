@@ -6,10 +6,8 @@ import Link from 'next/link'
 import { Button, Chip, Eyebrow, IconCheck, Panel } from '@/components/ui'
 import {
   createScan,
-  getConnection,
   getConnectionSpaces,
-  IS_MOCK,
-  type ConnectionSummary,
+  getConnectionWorkspaces,
   type SpaceSummary,
 } from '@/lib/api'
 
@@ -21,36 +19,41 @@ function Inner() {
   const params = useSearchParams()
   const connectionId = params.get('connection') ?? ''
 
-  const [connection, setConnection] = useState<ConnectionSummary | null>(null)
-  const [spaces, setSpaces] = useState<SpaceSummary[]>([])
+  const [workspaces, setWorkspaces] = useState<{ id: string; name: string }[] | null>(null)
   const [selected, setSelected] = useState<string>('')
+  const [spaces, setSpaces] = useState<SpaceSummary[]>([])
   const [excluded, setExcluded] = useState<string[]>([])
+  const [loadingWorkspaces, setLoadingWorkspaces] = useState(false)
   const [loadingSpaces, setLoadingSpaces] = useState(false)
+  const [wsError, setWsError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fatal, setFatal] = useState<string | null>(null)
 
-  useEffect(() => {
+  function loadWorkspaces() {
     if (!connectionId) {
       setFatal('No workspace connection was found. Please connect ClickUp to continue.')
       return
     }
-    if (IS_MOCK) {
-      const c = { id: connectionId, workspaces: [{ id: 'demo', name: 'Northwind Creative' }] }
-      setConnection(c)
-      setSelected(c.workspaces[0].id)
-      return
-    }
-    getConnection(connectionId)
-      .then((c) => {
-        setConnection(c)
-        if (c.workspaces?.[0]) setSelected(c.workspaces[0].id)
+    setLoadingWorkspaces(true)
+    setWsError(null)
+    getConnectionWorkspaces(connectionId)
+      .then((list) => {
+        setWorkspaces(list)
+        setSelected((prev) => (prev && list.some((w) => w.id === prev) ? prev : list[0]?.id ?? ''))
       })
-      .catch(() => setFatal('This connection is no longer available. Please connect ClickUp again.'))
-  }, [connectionId])
+      .catch(() => setWsError("We couldn't load your ClickUp workspaces (ClickUp timed out)."))
+      .finally(() => setLoadingWorkspaces(false))
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => loadWorkspaces(), [connectionId])
 
   useEffect(() => {
-    if (!selected) return
+    if (!selected) {
+      setSpaces([])
+      return
+    }
     setLoadingSpaces(true)
     getConnectionSpaces(connectionId, selected)
       .then((list) => {
@@ -65,13 +68,13 @@ function Inner() {
     setExcluded((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
 
   async function run() {
-    if (!connection || !selected) return
+    if (!connectionId || !selected) return
     setBusy(true)
     setError(null)
     try {
-      const ws = connection.workspaces.find((w) => w.id === selected)
+      const ws = workspaces?.find((w) => w.id === selected)
       const { id } = await createScan({
-        connectionId: connection.id,
+        connectionId,
         teamId: selected,
         workspaceName: ws?.name,
         excludeSpaceIds: excluded,
@@ -110,13 +113,18 @@ function Inner() {
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
         <Panel className="p-6">
           <Eyebrow className="mb-4">Workspace</Eyebrow>
-          {!connection ? (
-            <div className="text-sm text-txt-faint">Loading workspaces…</div>
-          ) : connection.workspaces.length === 0 ? (
+          {loadingWorkspaces ? (
+            <div className="text-sm text-txt-faint">Loading your workspaces…</div>
+          ) : wsError ? (
+            <div>
+              <p className="text-sm text-txt-muted">{wsError}</p>
+              <Button variant="ghost" onClick={loadWorkspaces} className="mt-3 px-5 py-2.5 text-sm">Retry</Button>
+            </div>
+          ) : !workspaces || workspaces.length === 0 ? (
             <div className="text-sm text-txt-muted">No workspaces found for this connection.</div>
           ) : (
             <div className="space-y-2.5">
-              {connection.workspaces.map((w) => {
+              {workspaces.map((w) => {
                 const on = selected === w.id
                 return (
                   <button

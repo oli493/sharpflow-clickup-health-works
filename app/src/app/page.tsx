@@ -1,4 +1,5 @@
-export default function Home() {
+export default function Home({ searchParams }: { searchParams?: { connect?: string } }) {
+  const connectError = searchParams?.connect === 'error'
   return (
     <main className="mx-auto grid min-h-screen max-w-3xl place-items-center px-6">
       <div className="card w-full p-10 text-center">
@@ -11,6 +12,13 @@ export default function Home() {
           improvements related to your structure, workflow, data, operations, adoption and
           utilisation.
         </p>
+
+        {connectError && (
+          <div className="mx-auto mt-6 max-w-md rounded-xl border border-magenta/40 bg-magenta/[0.06] px-5 py-4 text-sm text-txt-primary">
+            We couldn't connect to ClickUp just now (ClickUp timed out). Please try again.
+          </div>
+        )}
+
         <a href="/api/clickup/oauth" className="btn-primary btn-arrow pr-2.5 mt-8">
           Connect ClickUp
         </a>
