@@ -3,14 +3,17 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button, Chip, Eyebrow, IconCheck, Panel } from '@/components/ui'
-import { createScan, getConnection, IS_MOCK, type ConnectionSummary } from '@/lib/api'
+import {
+  createScan,
+  getConnection,
+  getConnectionSpaces,
+  IS_MOCK,
+  type ConnectionSummary,
+  type SpaceSummary,
+} from '@/lib/api'
 
-const EXCLUDE_OPTIONS = [
-  { id: 'template', label: 'Template Library', detail: 'Reusable templates and boilerplate Lists' },
-  { id: 'sandbox', label: 'Sandbox', detail: 'Experimental Spaces used for testing' },
-  { id: 'archived', label: 'Archived', detail: 'Spaces and Lists marked as archived' },
-  { id: 'test', label: 'Test / Demo', detail: 'Demo, onboarding and QA Spaces' },
-]
+// Spaces that usually distort a health score, auto-excluded by default.
+const AUTO_EXCLUDE = /template|sandbox|demo|test|archive|qa|onboarding/i
 
 function Inner() {
   const router = useRouter()
@@ -18,8 +21,10 @@ function Inner() {
   const connectionId = params.get('connection') ?? 'demo'
 
   const [connection, setConnection] = useState<ConnectionSummary | null>(null)
+  const [spaces, setSpaces] = useState<SpaceSummary[]>([])
   const [selected, setSelected] = useState<string>('')
-  const [excluded, setExcluded] = useState<string[]>(['template', 'sandbox', 'test'])
+  const [excluded, setExcluded] = useState<string[]>([])
+  const [loadingSpaces, setLoadingSpaces] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -37,6 +42,18 @@ function Inner() {
       })
       .catch((e) => setError(e.message))
   }, [connectionId])
+
+  useEffect(() => {
+    if (!selected) return
+    setLoadingSpaces(true)
+    getConnectionSpaces(connectionId, selected)
+      .then((list) => {
+        setSpaces(list)
+        setExcluded(list.filter((s) => AUTO_EXCLUDE.test(s.name)).map((s) => s.id))
+      })
+      .catch(() => setSpaces([]))
+      .finally(() => setLoadingSpaces(false))
+  }, [connectionId, selected])
 
   const toggle = (id: string) =>
     setExcluded((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -114,21 +131,31 @@ function Inner() {
             <Chip>{excluded.length} excluded</Chip>
           </div>
           <div className="mt-4 space-y-2.5">
-            {EXCLUDE_OPTIONS.map((o) => {
-              const on = excluded.includes(o.id)
-              return (
-                <button key={o.id} onClick={() => toggle(o.id)} className="flex w-full items-center gap-4 rounded-xl border border-line bg-brand-ink/[0.03] p-4 text-left transition-colors hover:border-line-strong">
-                  <span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${on ? 'bg-magenta' : 'bg-brand-ink/20'}`}>
-                    <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${on ? 'left-[1.15rem]' : 'left-0.5'}`} />
-                  </span>
-                  <span className="flex-1">
-                    <span className="block text-sm text-txt-primary">{o.label}</span>
-                    <span className="block text-[12px] text-txt-faint">{o.detail}</span>
-                  </span>
-                  {on && <span className="font-mono text-[10px] uppercase tracking-widest text-magenta">Excluded</span>}
-                </button>
-              )
-            })}
+            {loadingSpaces ? (
+              <div className="text-sm text-txt-faint">Loading Spaces…</div>
+            ) : spaces.length === 0 ? (
+              <div className="text-sm text-txt-muted">No Spaces found for this workspace.</div>
+            ) : (
+              spaces.map((s) => {
+                const on = excluded.includes(s.id)
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => toggle(s.id)}
+                    className="flex w-full items-center gap-4 rounded-xl border border-line bg-brand-ink/[0.03] p-4 text-left transition-colors hover:border-line-strong"
+                  >
+                    <span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${on ? 'bg-magenta' : 'bg-brand-ink/20'}`}>
+                      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${on ? 'left-[1.15rem]' : 'left-0.5'}`} />
+                    </span>
+                    <span className="flex-1">
+                      <span className="block text-sm text-txt-primary">{s.name}</span>
+                      <span className="block font-mono text-[11px] text-txt-faint">{s.id}</span>
+                    </span>
+                    {on && <span className="font-mono text-[10px] uppercase tracking-widest text-magenta">Excluded</span>}
+                  </button>
+                )
+              })
+            )}
           </div>
         </Panel>
       </div>

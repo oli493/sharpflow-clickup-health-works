@@ -51,6 +51,45 @@ function TopologyPanel() {
 
 function Dashboard({ id, result }: { id: string; result: ScanResult }) {
   const [pdfOpen, setPdfOpen] = useState(false)
+  const insufficient = result.activeTasks === 0 || result.coverage.scored <= 2
+
+  if (insufficient) {
+    return (
+      <div className="mx-auto max-w-[1100px] px-6 pb-28 pt-28">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <Eyebrow>Workspace report</Eyebrow>
+            <h1 className="mt-2 font-display text-2xl font-semibold tracking-display text-txt-primary sm:text-3xl">{result.workspaceName}</h1>
+            <div className="mt-2 font-mono text-[11px] text-txt-faint">scanned {result.scannedAt}</div>
+          </div>
+          <Link href="/workspaces">
+            <Button variant="ghost" className="px-5 py-3 text-sm">Run another scan</Button>
+          </Link>
+        </div>
+
+        <Panel className="p-8 sm:p-10">
+          <Chip className="mb-4">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#E07A2F' }} /> Insufficient data
+          </Chip>
+          <h2 className="font-display text-2xl font-semibold tracking-display text-brand-ink sm:text-3xl">
+            We couldn't read enough of this workspace to score it.
+          </h2>
+          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-txt-muted">
+            The connected account could only see <span className="text-txt-primary">{result.spaces}</span> Space{result.spaces === 1 ? '' : 's'} and{' '}
+            <span className="text-txt-primary">{result.activeTasks.toLocaleString()}</span> task{result.activeTasks === 1 ? '' : 's'}. ClickUp hides
+            workspace structure and tasks from anyone who isn't the workspace Owner or Admin, so any score here would be misleading.
+          </p>
+          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-txt-muted">
+            Reconnect as an <span className="font-medium text-txt-primary">Owner or Admin</span> of the workspace to get a full report.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <Link href="/"><Button arrow>Connect ClickUp</Button></Link>
+            <Link href="/workspaces"><Button variant="ghost" className="px-5 py-3 text-sm">Choose a workspace</Button></Link>
+          </div>
+        </Panel>
+      </div>
+    )
+  }
 
   return (
     <DrillProvider scanId={id}>

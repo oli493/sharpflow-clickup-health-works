@@ -30,6 +30,24 @@ export async function getConnection(id: string): Promise<ConnectionSummary> {
   return json<ConnectionSummary>(res)
 }
 
+export interface SpaceSummary {
+  id: string
+  name: string
+}
+
+export async function getConnectionSpaces(id: string, teamId: string): Promise<SpaceSummary[]> {
+  if (IS_MOCK) {
+    return [
+      { id: 'demo-1', name: 'Studio Ops' },
+      { id: 'demo-2', name: 'Client Delivery' },
+      { id: 'demo-3', name: 'Template Library' },
+    ]
+  }
+  const res = await fetch(`/api/connections/${id}/spaces?teamId=${encodeURIComponent(teamId)}`, { cache: 'no-store' })
+  const data = await json<{ spaces: SpaceSummary[] }>(res)
+  return data.spaces ?? []
+}
+
 export async function createScan(input: {
   connectionId: string
   teamId: string

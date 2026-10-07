@@ -333,10 +333,11 @@ export const scanWorkspace = inngest.createFunction(
         })
       }
 
-      const total = totalTasks || 1
-      const open = openTasks || 1
+      const hasTasks = totalTasks > 0
+      const hasLists = perList.length > 0
+      const open = openTasks
       const fragmented = perList.filter((l) => l.open_tasks < 5).length
-      const listCount = perList.length || 1
+      const listCount = perList.length
       let dormant60 = 0
       let dormant90 = 0
       for (const l of perList) {
@@ -357,31 +358,31 @@ export const scanWorkspace = inngest.createFunction(
       }
 
       const metrics: Metrics = {
-        avgTasksPerList: totalTasks / (perList.length || 1),
-        fragmentedListsPct: fragmented / (perList.length || 1),
-        dormantList60to90Pct: dormant60 / listCount,
-        dormantList90PlusPct: dormant90 / listCount,
-        emptyFoldersPct: structure.folderCount ? structure.emptyFolders / structure.folderCount : 0,
-        statusesPerWorkflow: avgStatuses,
+        avgTasksPerList: hasLists ? totalTasks / perList.length : undefined,
+        fragmentedListsPct: hasLists ? fragmented / perList.length : undefined,
+        dormantList60to90Pct: hasLists ? dormant60 / listCount : undefined,
+        dormantList90PlusPct: hasLists ? dormant90 / listCount : undefined,
+        emptyFoldersPct: structure.folderCount ? structure.emptyFolders / structure.folderCount : undefined,
+        statusesPerWorkflow: avgStatuses || undefined,
         duplicateStatusNames: structure.duplicateStatusNames,
-        overdueRate: overdue / open,
-        stale30to60Pct: stale30 / open,
-        stale60to90Pct: stale60 / open,
-        stale90PlusPct: stale90 / open,
-        openSubtasksUnderClosedPct: subtasksTotal ? subtasksUnderClosed / subtasksTotal : undefined,
-        creationVsCompletionPct: (created90 - completed90) / (created90 || 1),
-        wipPerPerson: structure.memberCount ? openTasks / structure.memberCount : openTasks,
-        guestRatio: structure.memberCount ? structure.guestCount / structure.memberCount : 0,
-        unusedStatuses: (structure.allStatusNames as string[]).filter((s) => !usedStatus.has(s)).length,
-        timeTrackedPct: withTime / total,
-        viewsPerSpace: structure.spaceCount ? structure.viewCount / structure.spaceCount : 0,
-        dependenciesUsed: withDependency,
+        overdueRate: hasTasks ? (open > 0 ? overdue / open : 0) : undefined,
+        stale30to60Pct: hasTasks ? (open > 0 ? stale30 / open : 0) : undefined,
+        stale60to90Pct: hasTasks ? (open > 0 ? stale60 / open : 0) : undefined,
+        stale90PlusPct: hasTasks ? (open > 0 ? stale90 / open : 0) : undefined,
+        openSubtasksUnderClosedPct: hasTasks && subtasksTotal ? subtasksUnderClosed / subtasksTotal : undefined,
+        creationVsCompletionPct: hasTasks ? (created90 - completed90) / (created90 || 1) : undefined,
+        wipPerPerson: hasTasks ? (structure.memberCount ? openTasks / structure.memberCount : openTasks) : undefined,
+        guestRatio: structure.memberCount ? structure.guestCount / structure.memberCount : undefined,
+        unusedStatuses: hasTasks ? (structure.allStatusNames as string[]).filter((s) => !usedStatus.has(s)).length : undefined,
+        timeTrackedPct: hasTasks ? withTime / totalTasks : undefined,
+        viewsPerSpace: structure.spaceCount ? structure.viewCount / structure.spaceCount : undefined,
+        dependenciesUsed: hasTasks ? withDependency : undefined,
         goalsTracked: structure.goalsTracked,
         customTaskTypes: structure.customTaskTypes,
-        dueDateCoverage: 1 - noDue / total,
-        ownershipCoverage: 1 - noAssignee / total,
-        estimateCoverage: withEstimate / total,
-        distinctWorkflows: structure.spaceCount,
+        dueDateCoverage: hasTasks ? 1 - noDue / totalTasks : undefined,
+        ownershipCoverage: hasTasks ? 1 - noAssignee / totalTasks : undefined,
+        estimateCoverage: hasTasks ? withEstimate / totalTasks : undefined,
+        distinctWorkflows: structure.spaceCount || undefined,
         customFieldCount: fieldStats.size || undefined,
         cfCompletionPct: cfSlots ? cfFilled / cfSlots : undefined,
         cfZeroFilledPct: fieldStats.size
@@ -431,7 +432,9 @@ export const scanWorkspace = inngest.createFunction(
       bySpace.set(l.space_id, s)
     }
     const spaceAgg = [...bySpace.values()]
-    const totalTasksAll = (scan.perList as { tasks: number }[]).reduce((s, l) => s + l.tasks, 0) || 1
+    const totalTasksAll = (scan.perList as { tasks: number }[]).reduce((s, l) => s + l.tasks, 0)
+    const hasTasks = totalTasksAll > 0
+    const hasLists = (scan.perList as unknown[]).length > 0
     const maxSpaceTasks = spaceAgg.reduce((m, s) => Math.max(m, s.tasks), 0)
     const dormantSpaceRows = spaceAgg
       .filter((s) => s.tasks === 0 || !s.last || now - s.last > STALE_DAYS * DAY)
@@ -456,10 +459,10 @@ export const scanWorkspace = inngest.createFunction(
 
     const metrics: Metrics = {
       ...scan.metrics,
-      activityConcentration: maxSpaceTasks / totalTasksAll,
-      dormantSpacesPct: structure.spaceCount ? dormantSpaces / structure.spaceCount : 0,
-      inactiveMemberPct: memberCount ? (memberCount - activeMemberCount) / memberCount : 0,
-      commentsPerUserPerWeek: activeMemberCount ? activity.totalComments / activeMemberCount / (ACTIVE_DAYS / 7) : 0,
+      activityConcentration: hasTasks ? maxSpaceTasks / totalTasksAll : undefined,
+      dormantSpacesPct: hasLists && structure.spaceCount ? dormantSpaces / structure.spaceCount : undefined,
+      inactiveMemberPct: hasTasks && memberCount ? (memberCount - activeMemberCount) / memberCount : undefined,
+      commentsPerUserPerWeek: hasTasks && activeMemberCount ? activity.totalComments / activeMemberCount / (ACTIVE_DAYS / 7) : undefined,
     }
 
     await progress(70, 'Calculating Health Score')
