@@ -26,7 +26,7 @@ function MiniRing({ value, color }: { value: number; color: string }) {
 }
 
 function CatCard({ cat, index }: { cat: CategoryResult; index: number }) {
-  const { ref, style } = useTilt<HTMLDivElement>({ max: 8 })
+  const { ref } = useTilt<HTMLDivElement>({ max: 8 })
   const { open } = useDrill()
   const band = scoreBand(cat.score)
 
@@ -59,7 +59,7 @@ function CatCard({ cat, index }: { cat: CategoryResult; index: number }) {
       transition={{ duration: 0.7, delay: (index % 4) * 0.07, ease: [0.16, 1, 0.3, 1] }}
       style={{ perspective: 900 }}
     >
-      <div ref={ref} style={style}>
+      <div ref={ref}>
         <Panel className="glare h-full p-5">
           <div className="flex items-start justify-between">
             <div className="relative grid place-items-center">
