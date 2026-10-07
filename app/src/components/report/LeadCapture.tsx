@@ -33,7 +33,7 @@ export default function LeadCapture({ scanId }: { scanId: string }) {
             Want Sharpflow to fix these findings?
           </h3>
           <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-txt-muted">
-            This report was generated automatically. If you'd like, we'll walk you through the priorities and turn this into an action plan — no obligation.
+            This report was generated automatically. If you'd like, we'll walk you through the priorities and turn this into an action plan: no obligation.
           </p>
 
           {sent ? (
@@ -42,7 +42,7 @@ export default function LeadCapture({ scanId }: { scanId: string }) {
                 <IconCheck className="h-4 w-4" />
               </span>
               <span className="text-sm text-txt-primary">
-                Thanks — we've queued a full copy to <span className="font-medium">{email || 'your inbox'}</span>.
+                Thanks. We've queued a full copy to <span className="font-medium">{email || 'your inbox'}</span>.
               </span>
             </motion.div>
           ) : (

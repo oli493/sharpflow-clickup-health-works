@@ -98,7 +98,7 @@ function Dashboard({ id, result }: { id: string; result: ScanResult }) {
               <Panel className="p-6">
                 <Eyebrow className="mb-3">What you're seeing</Eyebrow>
                 <p className="text-[13.5px] leading-relaxed text-txt-muted">
-                  Every node is a location in your workspace — the hub is the workspace, the large nodes are Spaces and the small nodes are Lists. Size reflects task volume; colour reflects health.
+                  Every node is a location in your workspace: the hub is the workspace, the large nodes are Spaces and the small nodes are Lists. Size reflects task volume; colour reflects health.
                 </p>
               </Panel>
               <Panel className="p-6">

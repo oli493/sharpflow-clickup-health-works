@@ -65,7 +65,7 @@ function Inner() {
       <Eyebrow className="mb-3">Step 2 · Audit configuration</Eyebrow>
       <h1 className="font-display text-3xl font-semibold tracking-display text-txt-primary sm:text-4xl">Choose what gets analysed</h1>
       <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-txt-muted">
-        Pick the workspace to audit, and exclude any Spaces that would distort the score — template libraries, sandboxes and test environments.
+        Pick the workspace to audit, and exclude any Spaces that would distort the score: template libraries, sandboxes and test environments.
       </p>
 
       {error && (

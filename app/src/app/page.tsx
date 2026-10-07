@@ -4,11 +4,12 @@ export default function Home() {
       <div className="card w-full p-10 text-center">
         <img src="/brand/logo-wordmark.png" alt="Sharpflow" className="mx-auto h-8 w-auto" />
         <h1 className="mt-8 font-display text-3xl font-semibold text-brand-ink">
-          ClickUp Health
+          Free ClickUp health check
         </h1>
         <p className="mx-auto mt-3 max-w-md text-[15px] text-txt-muted">
-          Connect your ClickUp workspace and get an automated health assessment — structure,
-          workflow, data quality, operations, adoption and utilisation.
+          Connect your ClickUp workspace and get a free automated health check. See practical
+          improvements related to your structure, workflow, data, operations, adoption and
+          utilisation.
         </p>
         <a href="/api/clickup/oauth" className="btn-primary mt-8">
           Connect ClickUp

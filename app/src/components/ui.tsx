@@ -6,19 +6,8 @@ import { cn } from '../lib/format'
 
 /* ---------------------------------- Logo ---------------------------------- */
 
-export function Logo({ compact = false }: { compact?: boolean }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <img
-        src="/brand/logo-mark.jpg"
-        alt="Sharpflow"
-        className="h-9 w-9 rounded-xl object-cover shadow-card"
-      />
-      {!compact && (
-        <img src="/brand/logo-wordmark.png" alt="Sharpflow" className="h-[22px] w-auto" />
-      )}
-    </div>
-  )
+export function Logo() {
+  return <img src="/brand/logo-wordmark.png" alt="Sharpflow" className="h-[22px] w-auto" />
 }
 
 /* --------------------------------- Button --------------------------------- */

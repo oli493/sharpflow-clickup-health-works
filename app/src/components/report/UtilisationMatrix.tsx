@@ -21,7 +21,7 @@ export default function UtilisationMatrix({ utilisation }: { utilisation: UtilRo
         <div>
           <h3 className="font-display text-lg text-txt-primary">Platform utilisation</h3>
           <p className="mt-1 max-w-lg text-[12.5px] leading-relaxed text-txt-muted">
-            Which ClickUp capabilities are actually in use — and, honestly, which the public API can't measure.
+            Which ClickUp capabilities are actually in use, and honestly which the public API can't measure.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

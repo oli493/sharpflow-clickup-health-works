@@ -41,7 +41,7 @@ export const DATASET_META: Record<string, DatasetMeta> = {
   },
   'custom-fields': {
     title: 'Custom Field audit',
-    subtitle: 'Fields by completion rate — lowest first',
+    subtitle: 'Fields by completion rate, lowest first',
     columns: [
       { key: 'field', label: 'Custom Field' },
       { key: 'scope', label: 'Scope' },

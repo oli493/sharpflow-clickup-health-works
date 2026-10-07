@@ -13,7 +13,7 @@ export default function RulesTeaser({ rules }: { rules: Rule[] }) {
         <div>
           <h3 className="font-display text-lg text-txt-primary">Rules &amp; thresholds engine</h3>
           <p className="mt-1 max-w-md text-[12.5px] leading-relaxed text-txt-muted">
-            Every finding is a rule. Thresholds, severity and weight are configuration — new rules are added without a rebuild.
+            Every finding is a rule. Thresholds, severity and weight are configuration: new rules are added without a rebuild.
           </p>
         </div>
         <Chip>{rules.length} shown · configurable</Chip>

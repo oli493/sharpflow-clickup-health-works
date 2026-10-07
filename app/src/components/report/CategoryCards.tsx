@@ -43,7 +43,7 @@ function CatCard({ cat, index }: { cat: CategoryResult; index: number }) {
           <div>
             <h3 className="font-display text-[15px] font-medium leading-snug text-txt-primary/70">{cat.name}</h3>
             <p className="mt-2 text-[12.5px] leading-relaxed text-txt-faint">
-              Not enough measurable data through the ClickUp API yet — excluded from the score.
+              Not enough measurable data through the ClickUp API yet: excluded from the score.
             </p>
           </div>
         </div>

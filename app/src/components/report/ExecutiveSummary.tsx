@@ -32,7 +32,7 @@ export default function ExecutiveSummary({ summary }: { summary: string[] }) {
           </span>
           <div>
             <h3 className="font-display text-lg text-txt-primary">AI executive summary</h3>
-            <p className="font-mono text-[11px] text-txt-faint">Explains the engine — never sets the score</p>
+            <p className="font-mono text-[11px] text-txt-faint">Explains the engine: never sets the score</p>
           </div>
         </div>
         <Chip className={done ? '' : 'animate-pulse'}>
