@@ -1,18 +1,25 @@
 import { useEffect, useRef } from 'react'
 
+const GLOW = 1000
+
 export default function Background() {
   const glowRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const el = glowRef.current
     if (!el) return
+    const place = (x: number, y: number) => {
+      el.style.transform = `translate3d(${x - GLOW / 2}px, ${y - GLOW / 2}px, 0)`
+    }
+    place(window.innerWidth / 2, window.innerHeight * 0.12)
+    if (window.matchMedia('(pointer: coarse)').matches) return
+
+    // Move the glow with a transform (compositor-only) instead of repainting a
+    // full-viewport gradient every frame.
     let raf = 0
     const onMove = (e: PointerEvent) => {
       cancelAnimationFrame(raf)
-      raf = requestAnimationFrame(() => {
-        el.style.setProperty('--mx', `${e.clientX}px`)
-        el.style.setProperty('--my', `${e.clientY}px`)
-      })
+      raf = requestAnimationFrame(() => place(e.clientX, e.clientY))
     }
     window.addEventListener('pointermove', onMove, { passive: true })
     return () => {
@@ -44,13 +51,14 @@ export default function Background() {
       {/* grid */}
       <div className="grid-noise absolute inset-0 opacity-[0.5] mask-fade-b" />
 
-      {/* cursor glow */}
+      {/* cursor glow (transform-driven) */}
       <div
         ref={glowRef}
-        className="absolute inset-0 opacity-70"
+        className="absolute left-0 top-0 opacity-70 will-change-transform"
         style={{
-          background:
-            'radial-gradient(460px circle at var(--mx, 50%) var(--my, 12%), rgba(95,186,149,0.18), transparent 60%)',
+          width: GLOW,
+          height: GLOW,
+          background: 'radial-gradient(circle 460px, rgba(95,186,149,0.18), transparent 60%)',
         }}
       />
 
