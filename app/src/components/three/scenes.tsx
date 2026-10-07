@@ -1,5 +1,5 @@
-import { useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useEffect, useMemo, useRef } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import { Float, Line, MeshDistortMaterial } from '@react-three/drei'
 import * as THREE from 'three'
 import { demoMode } from '../../lib/motion'
@@ -131,7 +131,7 @@ export interface TopologySpace {
 }
 
 function buildGraph(spaces: TopologySpace[]) {
-  const nodes: Node[] = [{ pos: [0, 0, 0], size: 0.34, color: '#E01072', kind: 'hub', name: 'Workspace' }]
+  const nodes: Node[] = [{ pos: [0, 0, 0], size: 0.34, color: '#E01072', kind: 'hub' }]
   const links: { a: THREE.Vector3; b: THREE.Vector3; strong: boolean }[] = []
   const hub = new THREE.Vector3(0, 0, 0)
   const spaceCount = Math.max(1, spaces.length)
@@ -176,6 +176,27 @@ export function TopologyGraph({ onSelect, spaces = [] }: { onSelect?: (name: str
   const progress = useRef(0)
   const { nodes, links } = useMemo(() => buildGraph(spaces), [spaces])
   const speed = demoMode ? 1 / 2.4 : 1 / 1.3
+  const { camera, raycaster, gl } = useThree()
+
+  // Click-only raycasting: no per-move hover raycasts, which keeps the custom
+  // cursor smooth over the report.
+  useEffect(() => {
+    const el = gl.domElement
+    const onDown = (e: PointerEvent) => {
+      const rect = el.getBoundingClientRect()
+      const ndc = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1,
+      )
+      raycaster.setFromCamera(ndc, camera)
+      const targets = nodeRefs.current.filter(Boolean) as THREE.Mesh[]
+      const hit = raycaster.intersectObjects(targets, false)[0]
+      const name = (hit?.object.userData as { name?: string } | undefined)?.name
+      if (name) onSelect?.(name)
+    }
+    el.addEventListener('pointerdown', onDown)
+    return () => el.removeEventListener('pointerdown', onDown)
+  }, [camera, raycaster, gl, onSelect])
 
   useFrame((state, delta) => {
     if (!group.current) return
@@ -223,21 +244,7 @@ export function TopologyGraph({ onSelect, spaces = [] }: { onSelect?: (name: str
             ref={(el: any) => (nodeRefs.current[i] = el)}
             position={n.pos}
             scale={0.001}
-            onClick={(e) => {
-              if (n.name) {
-                e.stopPropagation()
-                onSelect?.(n.name)
-              }
-            }}
-            onPointerOver={(e) => {
-              if (n.name) {
-                e.stopPropagation()
-                document.body.style.cursor = 'pointer'
-              }
-            }}
-            onPointerOut={() => {
-              document.body.style.cursor = ''
-            }}
+            userData={{ name: n.name }}
           >
             <sphereGeometry args={[n.size, 20, 20]} />
             <meshStandardMaterial
