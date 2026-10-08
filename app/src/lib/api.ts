@@ -30,11 +30,17 @@ export async function getConnection(id: string): Promise<ConnectionSummary> {
   return json<ConnectionSummary>(res)
 }
 
-export async function getConnectionWorkspaces(id: string): Promise<{ id: string; name: string }[]> {
-  if (IS_MOCK) return [{ id: 'demo', name: 'Northwind Creative' }]
+export interface WorkspacesResult {
+  workspaces: { id: string; name: string }[]
+  /** True when the connection exists but no workspace is authorised for the app. */
+  unauthorized?: boolean
+}
+
+export async function getConnectionWorkspaces(id: string): Promise<WorkspacesResult> {
+  if (IS_MOCK) return { workspaces: [{ id: 'demo', name: 'Northwind Creative' }] }
   const res = await fetch(`/api/connections/${id}/workspaces`, { cache: 'no-store' })
-  const data = await json<{ workspaces: { id: string; name: string }[] }>(res)
-  return data.workspaces ?? []
+  const data = await json<WorkspacesResult>(res)
+  return { workspaces: data.workspaces ?? [], unauthorized: data.unauthorized }
 }
 
 export interface SpaceSummary {
@@ -51,6 +57,7 @@ export async function getConnectionSpaces(id: string, teamId: string): Promise<S
     ]
   }
   const res = await fetch(`/api/connections/${id}/spaces?teamId=${encodeURIComponent(teamId)}`, { cache: 'no-store' })
+  if (res.status === 403) throw new Error('workspace_not_authorized')
   const data = await json<{ spaces: SpaceSummary[] }>(res)
   return data.spaces ?? []
 }

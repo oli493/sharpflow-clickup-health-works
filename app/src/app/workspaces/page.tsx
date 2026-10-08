@@ -14,6 +14,30 @@ import {
 // Spaces that usually distort a health score, auto-excluded by default.
 const AUTO_EXCLUDE = /template|sandbox|demo|test|archive|qa|onboarding/i
 
+// Shown when ClickUp won't let the app read a workspace (OAuth token is scoped
+// to the one workspace chosen at consent).
+function ReconnectBlock({ workspace }: { workspace?: string }) {
+  return (
+    <div>
+      <p className="text-sm leading-relaxed text-txt-muted">
+        {workspace ? (
+          <>
+            ClickUp is blocking the app from{' '}
+            <span className="font-medium text-txt-primary">{workspace}</span>.
+          </>
+        ) : (
+          <>ClickUp is blocking the app from your workspace.</>
+        )}{' '}
+        This usually means a different workspace was selected when you connected, or this one
+        hasn&apos;t approved the app.
+      </p>
+      <a href="/api/clickup/oauth" className="btn-primary btn-arrow pr-2.5 mt-4 inline-flex">
+        Reconnect ClickUp
+      </a>
+    </div>
+  )
+}
+
 function Inner() {
   const router = useRouter()
   const params = useSearchParams()
@@ -26,9 +50,13 @@ function Inner() {
   const [loadingWorkspaces, setLoadingWorkspaces] = useState(false)
   const [loadingSpaces, setLoadingSpaces] = useState(false)
   const [wsError, setWsError] = useState<string | null>(null)
+  const [wsUnauthorized, setWsUnauthorized] = useState(false)
+  const [spacesError, setSpacesError] = useState<'not_authorized' | 'generic' | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fatal, setFatal] = useState<string | null>(null)
+
+  const selectedName = workspaces?.find((w) => w.id === selected)?.name
 
   function loadWorkspaces() {
     if (!connectionId) {
@@ -37,10 +65,14 @@ function Inner() {
     }
     setLoadingWorkspaces(true)
     setWsError(null)
+    setWsUnauthorized(false)
     getConnectionWorkspaces(connectionId)
-      .then((list) => {
-        setWorkspaces(list)
-        setSelected((prev) => (prev && list.some((w) => w.id === prev) ? prev : list[0]?.id ?? ''))
+      .then((res) => {
+        setWorkspaces(res.workspaces)
+        setWsUnauthorized(!!res.unauthorized && res.workspaces.length === 0)
+        setSelected((prev) =>
+          prev && res.workspaces.some((w) => w.id === prev) ? prev : res.workspaces[0]?.id ?? '',
+        )
       })
       .catch(() => setWsError("We couldn't load your ClickUp workspaces (ClickUp timed out)."))
       .finally(() => setLoadingWorkspaces(false))
@@ -52,15 +84,20 @@ function Inner() {
   useEffect(() => {
     if (!selected) {
       setSpaces([])
+      setSpacesError(null)
       return
     }
     setLoadingSpaces(true)
+    setSpacesError(null)
     getConnectionSpaces(connectionId, selected)
       .then((list) => {
         setSpaces(list)
         setExcluded(list.filter((s) => AUTO_EXCLUDE.test(s.name)).map((s) => s.id))
       })
-      .catch(() => setSpaces([]))
+      .catch((e) => {
+        setSpaces([])
+        setSpacesError((e as Error).message === 'workspace_not_authorized' ? 'not_authorized' : 'generic')
+      })
       .finally(() => setLoadingSpaces(false))
   }, [connectionId, selected])
 
@@ -120,6 +157,8 @@ function Inner() {
               <p className="text-sm text-txt-muted">{wsError}</p>
               <Button variant="ghost" onClick={loadWorkspaces} className="mt-3 px-5 py-2.5 text-sm">Retry</Button>
             </div>
+          ) : wsUnauthorized ? (
+            <ReconnectBlock />
           ) : !workspaces || workspaces.length === 0 ? (
             <div className="text-sm text-txt-muted">No workspaces found for this connection.</div>
           ) : (
@@ -159,6 +198,8 @@ function Inner() {
           <div className="mt-4 space-y-2.5">
             {loadingSpaces ? (
               <div className="text-sm text-txt-faint">Loading Spaces…</div>
+            ) : spacesError === 'not_authorized' ? (
+              <ReconnectBlock workspace={selectedName} />
             ) : spaces.length === 0 ? (
               <div className="text-sm text-txt-muted">No Spaces found for this workspace.</div>
             ) : (
@@ -191,7 +232,7 @@ function Inner() {
           <span><span className="text-txt-faint">Score</span> 7 categories</span>
           <span><span className="text-txt-faint">Findings</span> configurable rules</span>
         </div>
-        <Button onClick={run} size="lg" disabled={busy || !selected} arrow>
+        <Button onClick={run} size="lg" disabled={busy || !selected || spacesError === 'not_authorized'} arrow>
           {busy ? 'Starting…' : 'Run audit'}
         </Button>
       </Panel>

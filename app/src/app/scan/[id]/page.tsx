@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Eyebrow, IconCheck, Panel } from '@/components/ui'
 import { getScanStatus, IS_MOCK } from '@/lib/api'
@@ -24,12 +25,32 @@ function stageIndexFor(pct: number) {
   return STAGES.reduce((acc, s, i) => (pct >= s.at ? i : acc), 0)
 }
 
+function failureReason(err?: string): { message: string; reconnect: boolean } {
+  const e = (err ?? '').toLowerCase()
+  if (e.includes('oauth_192') || e.includes('workspace not authorized')) {
+    return {
+      message:
+        "ClickUp is blocking the app from this workspace, so we couldn't read it. Reconnect ClickUp and make sure you select the right workspace on its permission screen.",
+      reconnect: true,
+    }
+  }
+  return {
+    message:
+      err && err.length < 220
+        ? err
+        : 'Something went wrong while reading the workspace. You can try running the audit again.',
+    reconnect: false,
+  }
+}
+
 export default function ScanPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const id = params.id
   const [pct, setPct] = useState(0)
   const [score, setScore] = useState<number | null>(null)
+  const [failed, setFailed] = useState<{ message: string; reconnect: boolean } | null>(null)
+  const [connId, setConnId] = useState<string | undefined>(undefined)
   const index = stageIndexFor(pct)
   const done = index >= STAGES.length - 1
 
@@ -53,6 +74,7 @@ export default function ScanPage() {
       try {
         const s = await getScanStatus(id)
         if (!active) return
+        setConnId(s.connectionId)
         setPct(s.progress ?? 0)
         if (s.status === 'complete') {
           setScore(s.result?.overallScore ?? null)
@@ -62,6 +84,7 @@ export default function ScanPage() {
         }
         if (s.status === 'failed') {
           setPct(100)
+          setFailed(failureReason(s.error))
           return
         }
         setTimeout(poll, 1500)
@@ -76,6 +99,30 @@ export default function ScanPage() {
   }, [id, router])
 
   const progress = Math.min(1, pct / 100)
+
+  if (failed) {
+    return (
+      <div className="mx-auto grid min-h-screen max-w-[720px] place-items-center px-6 pb-16 pt-32">
+        <Panel className="w-full p-8 text-center sm:p-10">
+          <Eyebrow className="mb-3">Step 3 · Audit</Eyebrow>
+          <h1 className="font-display text-2xl font-semibold tracking-display text-brand-ink sm:text-3xl">
+            We couldn&apos;t finish the audit
+          </h1>
+          <p className="mx-auto mt-3 max-w-lg text-[15px] leading-relaxed text-txt-muted">{failed.message}</p>
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
+            {failed.reconnect && (
+              <a href="/api/clickup/oauth" className="btn-primary btn-arrow pr-2.5">
+                Reconnect ClickUp
+              </a>
+            )}
+            <Link href={connId ? `/workspaces?connection=${connId}` : '/'} className="btn-ghost px-6 py-3">
+              Back to workspace setup
+            </Link>
+          </div>
+        </Panel>
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto grid min-h-screen max-w-[980px] place-items-center px-6 pb-16 pt-32">

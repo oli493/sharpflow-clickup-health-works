@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { decrypt } from '@/lib/crypto'
-import { ClickUpClient } from '@/lib/clickup/client'
+import { ClickUpClient, ClickUpError } from '@/lib/clickup/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +25,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       spaces: (spaces ?? []).map((s) => ({ id: s.id, name: s.name })),
     })
   } catch (e) {
+    // ClickUp scopes the OAuth token to the one workspace selected at consent.
+    // `/team` still lists every membership, so a workspace can look available but
+    // be unauthorised — surface that distinctly so the UI can prompt a reconnect.
+    if (e instanceof ClickUpError && (e.status === 401 || e.code === 'OAUTH_192')) {
+      // The cached workspace list may include this unauthorised workspace; clear it
+      // so the picker re-checks and stops offering it.
+      await admin.from('connections').update({ workspaces: [] }).eq('id', params.id)
+      return NextResponse.json({ error: 'workspace_not_authorized' }, { status: 403 })
+    }
     return NextResponse.json({ error: (e as Error).message }, { status: 502 })
   }
 }

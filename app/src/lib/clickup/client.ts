@@ -19,6 +19,25 @@ interface RequestOptions {
   body?: unknown
 }
 
+/** Error carrying the HTTP status and ClickUp's error code (e.g. OAUTH_192). */
+export class ClickUpError extends Error {
+  status: number
+  code: string | null
+
+  constructor(status: number, body: string, path: string) {
+    super(`ClickUp ${status} on ${path}: ${body.slice(0, 200)}`)
+    this.name = 'ClickUpError'
+    this.status = status
+    let code: string | null = null
+    try {
+      code = (JSON.parse(body) as { ECODE?: string }).ECODE ?? null
+    } catch {
+      code = null
+    }
+    this.code = code
+  }
+}
+
 /**
  * Thin ClickUp v2 client with basic rate-limit handling.
  * ClickUp rate limits are per-token and plan-gated (~100 req/min below Business Plus),
@@ -50,7 +69,10 @@ export class ClickUpClient {
 
       if (res.status === 429 || res.status >= 500) {
         attempt += 1
-        if (attempt > 6) throw new Error(`ClickUp ${res.status} on ${path}`)
+        if (attempt > 6) {
+          const text = await res.text().catch(() => '')
+          throw new ClickUpError(res.status, text, path)
+        }
         const retryAfter = Number(res.headers.get('retry-after') ?? '0')
         const waitMs = retryAfter > 0 ? retryAfter * 1000 : Math.min(8000, 2 ** attempt * 400)
         await new Promise((r) => setTimeout(r, waitMs))
@@ -59,7 +81,7 @@ export class ClickUpClient {
 
       if (!res.ok) {
         const text = await res.text().catch(() => '')
-        throw new Error(`ClickUp ${res.status} on ${path}: ${text.slice(0, 200)}`)
+        throw new ClickUpError(res.status, text, path)
       }
 
       return (await res.json()) as T

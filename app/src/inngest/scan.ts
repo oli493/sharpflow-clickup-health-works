@@ -20,7 +20,29 @@ interface ScanEvent {
 }
 
 export const scanWorkspace = inngest.createFunction(
-  { id: 'scan-workspace' },
+  {
+    id: 'scan-workspace',
+    // Persist a failed status so the UI can explain what happened instead of
+    // spinning forever — without this the scan row stays "running" on error.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onFailure: async ({ event }: any) => {
+      const scanId = (event?.data?.event?.data?.scanId as string | undefined) ?? undefined
+      if (!scanId) return
+      const message =
+        (event?.data?.error?.message as string | undefined) ?? 'The audit could not complete.'
+      const admin = supabaseAdmin()
+      await admin
+        .from('scans')
+        .update({
+          status: 'failed',
+          progress: 100,
+          stage: 'Failed',
+          error: message,
+          finished_at: new Date().toISOString(),
+        })
+        .eq('id', scanId)
+    },
+  },
   { event: 'scan/requested' },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async ({ event, step }: { event: ScanEvent; step: any }) => {

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { decrypt } from '@/lib/crypto'
-import { ClickUpClient } from '@/lib/clickup/client'
+import { ClickUpClient, ClickUpError } from '@/lib/clickup/client'
 
 export const dynamic = 'force-dynamic'
 
-// Workspaces for a connection. Uses the cached list if present; otherwise fetches
-// ClickUp's (potentially slow) /team and caches it. Kept off the OAuth callback
-// so a slow/hiccuping ClickUp can't crash the connect flow.
+// Workspaces for a connection. ClickUp's /team lists every workspace the user
+// belongs to, but an OAuth token is only allowed into the workspace chosen at
+// consent — so we probe each and return only the ones we can actually read.
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const admin = supabaseAdmin()
   const { data, error } = await admin
@@ -23,9 +23,35 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   try {
     const client = new ClickUpClient(decrypt(data.token_encrypted))
     const { teams } = await client.getAuthorizedTeams()
-    const workspaces = (teams ?? []).map((t) => ({ id: t.id, name: t.name }))
-    await admin.from('connections').update({ workspaces, updated_at: new Date().toISOString() }).eq('id', params.id)
-    return NextResponse.json({ workspaces })
+    const all = teams ?? []
+
+    const probed = await Promise.all(
+      all.map(async (t) => {
+        try {
+          await client.getSpaces(t.id)
+          return { id: t.id, name: t.name, unauthorized: false }
+        } catch (e) {
+          const unauthorized = e instanceof ClickUpError && (e.status === 401 || e.code === 'OAUTH_192')
+          return { id: t.id, name: t.name, unauthorized }
+        }
+      }),
+    )
+
+    // Drop only workspaces we've confirmed are unauthorised; keep any we couldn't
+    // verify (e.g. a transient ClickUp error) so we never hide a usable workspace.
+    const accessible = probed.filter((p) => !p.unauthorized).map(({ id, name }) => ({ id, name }))
+    const anyUnauthorized = probed.some((p) => p.unauthorized)
+
+    if (accessible.length) {
+      await admin
+        .from('connections')
+        .update({ workspaces: accessible, updated_at: new Date().toISOString() })
+        .eq('id', params.id)
+      return NextResponse.json({ workspaces: accessible })
+    }
+
+    // Nothing readable — don't cache, so a later reconnect can recover.
+    return NextResponse.json({ workspaces: [], unauthorized: anyUnauthorized })
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 })
   }
