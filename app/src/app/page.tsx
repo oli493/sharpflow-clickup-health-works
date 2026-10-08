@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export default function Home({ searchParams }: { searchParams?: { connect?: string } }) {
   const connectError = searchParams?.connect === 'error'
   return (
@@ -25,6 +27,15 @@ export default function Home({ searchParams }: { searchParams?: { connect?: stri
         <p className="mt-4 font-mono text-[11px] uppercase tracking-widest text-txt-faint">
           Read-only · OAuth
         </p>
+
+        <div className="mt-5">
+          <Link
+            href="/sample"
+            className="font-mono text-[11px] uppercase tracking-widest text-magenta hover:underline"
+          >
+            See a sample report
+          </Link>
+        </div>
 
         {process.env.NODE_ENV !== 'production' && (
           <div className="mt-6 border-t border-line pt-4">

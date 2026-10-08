@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { Button, Chip, IconCheck, Panel } from '../ui'
 import { postLead } from '../../lib/api'
 
-export default function LeadCapture({ scanId }: { scanId: string }) {
+export default function LeadCapture({ scanId, sample = false }: { scanId: string; sample?: boolean }) {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -36,7 +36,17 @@ export default function LeadCapture({ scanId }: { scanId: string }) {
             This report was generated automatically. If you'd like, we'll walk you through the priorities and turn this into an action plan: no obligation.
           </p>
 
-          {sent ? (
+          {sample ? (
+            <div className="mt-7 flex items-start gap-3 rounded-xl border border-line bg-brand-ink/[0.03] px-5 py-4">
+              <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-magenta/10 text-magenta">
+                <IconCheck className="h-4 w-4" />
+              </span>
+              <span className="text-sm text-txt-muted">
+                This is a <span className="font-medium text-txt-primary">sample report</span> with example data.
+                Connect your own ClickUp workspace to get your real score, findings and recommendations.
+              </span>
+            </div>
+          ) : sent ? (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-7 flex items-center gap-3 rounded-xl border border-magenta/30 bg-magenta/[0.05] px-5 py-4">
               <span className="grid h-8 w-8 place-items-center rounded-full bg-sev-good/15 text-sev-good">
                 <IconCheck className="h-4 w-4" />

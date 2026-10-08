@@ -222,3 +222,44 @@ export function getMockDrill(key: string): DrillDataset {
   if (key.startsWith('space:')) return mockSpaceDataset(key.slice(6))
   return MOCK_DRILL[key] ?? MOCK_DRILL['overdue']
 }
+
+/* ------------------------------- structure -------------------------------- */
+
+export interface MockStructureSpace {
+  name: string
+  health: number
+  lists: { name: string; health: number; tasks: number }[]
+}
+
+/** Sample workspace topology (matches MOCK_SCAN's "Northwind Creative"). */
+export const MOCK_STRUCTURE: MockStructureSpace[] = [
+  { name: 'Studio Ops', health: 0.86, lists: [
+    { name: 'Delivery Board', health: 0.9, tasks: 120 },
+    { name: 'Ops Backlog', health: 0.62, tasks: 48 },
+    { name: 'QA Queue', health: 0.78, tasks: 33 },
+  ] },
+  { name: 'Client Delivery', health: 0.72, lists: [
+    { name: 'Northwind – Delivery', health: 0.82, tasks: 210 },
+    { name: 'Halcyon – Delivery', health: 0.55, tasks: 64 },
+    { name: 'Riverbank – Delivery', health: 0.9, tasks: 96 },
+  ] },
+  { name: 'Sales & Pipeline', health: 0.6, lists: [
+    { name: 'Inbound', health: 0.7, tasks: 140 },
+    { name: 'Outbound', health: 0.45, tasks: 38 },
+    { name: 'Proposals', health: 0.66, tasks: 52 },
+  ] },
+  { name: 'Marketing', health: 0.5, lists: [
+    { name: 'Campaigns', health: 0.58, tasks: 88 },
+    { name: 'Content Calendar', health: 0.4, tasks: 26 },
+    { name: 'Brand', health: 0.52, tasks: 14 },
+  ] },
+  { name: 'Finance', health: 0.8, lists: [
+    { name: 'Invoices', health: 0.85, tasks: 60 },
+    { name: 'Budget', health: 0.74, tasks: 22 },
+  ] },
+  { name: 'People & Culture', health: 0.44, lists: [
+    { name: 'Onboarding', health: 0.5, tasks: 18 },
+    { name: 'Recruiting', health: 0.35, tasks: 9 },
+    { name: 'Reviews', health: 0.6, tasks: 12 },
+  ] },
+]

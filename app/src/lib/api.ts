@@ -1,5 +1,5 @@
 import type { DrillDataset, ScanStatus } from './types'
-import { MOCK_SCAN, getMockDrill } from './mock/scan'
+import { MOCK_SCAN, MOCK_STRUCTURE, getMockDrill } from './mock/scan'
 
 /**
  * Mock mode: on by default in development, off in production.
@@ -84,15 +84,15 @@ export interface StructureSpace {
   lists: { name: string; health: number; tasks: number }[]
 }
 
-export async function getStructure(scanId: string): Promise<StructureSpace[]> {
-  if (IS_MOCK) return []
+export async function getStructure(scanId: string, mock = false): Promise<StructureSpace[]> {
+  if (IS_MOCK || mock) return MOCK_STRUCTURE
   const res = await fetch(`/api/scans/${scanId}/structure`, { cache: 'no-store' })
   const data = await json<{ spaces: StructureSpace[] }>(res)
   return data.spaces ?? []
 }
 
-export async function getDrill(scanId: string, key: string): Promise<DrillDataset> {
-  if (IS_MOCK) return getMockDrill(key)
+export async function getDrill(scanId: string, key: string, mock = false): Promise<DrillDataset> {
+  if (IS_MOCK || mock) return getMockDrill(key)
   const res = await fetch(`/api/scans/${scanId}/drill/${encodeURIComponent(key)}`, { cache: 'no-store' })
   return json<DrillDataset>(res)
 }
@@ -113,6 +113,7 @@ export async function postLead(scanId: string, email: string): Promise<void> {
   })
 }
 
-export function pdfUrl(scanId: string): string {
+export function pdfUrl(scanId: string, sample = false): string {
+  if (sample) return '/api/sample/report.pdf'
   return IS_MOCK ? '#' : `/api/scans/${scanId}/report.pdf`
 }

@@ -16,13 +16,13 @@ interface DrillApi {
 const DrillCtx = createContext<DrillApi>({ open: () => {} })
 export const useDrill = () => useContext(DrillCtx)
 
-export function DrillProvider({ scanId, children }: { scanId: string; children: ReactNode }) {
+export function DrillProvider({ scanId, children, mock = false }: { scanId: string; children: ReactNode; mock?: boolean }) {
   const [key, setKey] = useState<string | null>(null)
   const open = useCallback((k: string) => setKey(k), [])
   return (
     <DrillCtx.Provider value={{ open }}>
       {children}
-      <DrillDrawer scanId={scanId} datasetKey={key} onClose={() => setKey(null)} />
+      <DrillDrawer scanId={scanId} datasetKey={key} onClose={() => setKey(null)} mock={mock} />
     </DrillCtx.Provider>
   )
 }
@@ -39,10 +39,12 @@ function DrillDrawer({
   scanId,
   datasetKey,
   onClose,
+  mock = false,
 }: {
   scanId: string
   datasetKey: string | null
   onClose: () => void
+  mock?: boolean
 }) {
   const [dataset, setDataset] = useState<DrillDataset | null>(null)
   const [loading, setLoading] = useState(false)
@@ -57,14 +59,14 @@ function DrillDrawer({
     setQuery('')
     setSortKey('')
     let active = true
-    getDrill(scanId, datasetKey)
+    getDrill(scanId, datasetKey, mock)
       .then((d) => active && setDataset(d))
       .catch(() => active && setDataset(null))
       .finally(() => active && setLoading(false))
     return () => {
       active = false
     }
-  }, [scanId, datasetKey])
+  }, [scanId, datasetKey, mock])
 
   useEffect(() => {
     if (!datasetKey) return
@@ -107,6 +109,8 @@ function DrillDrawer({
     a.click()
     URL.revokeObjectURL(url)
   }
+
+  if (typeof document === 'undefined') return null
 
   return createPortal(
     <AnimatePresence>
@@ -196,7 +200,7 @@ function DrillDrawer({
 
             <div className="flex items-center justify-between border-t border-line px-6 py-4">
               <span className="font-mono text-[10px] uppercase tracking-widest text-txt-faint">{rows.length} rows</span>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-brand-glow">Live via ClickUp API</span>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-brand-glow">{mock ? 'Sample data' : 'Live via ClickUp API'}</span>
             </div>
           </motion.aside>
         </motion.div>

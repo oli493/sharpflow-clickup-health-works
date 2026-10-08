@@ -13,11 +13,13 @@ export default function PdfPreview({
   scanId,
   open,
   onClose,
+  sample = false,
 }: {
   result: ScanResult
   scanId: string
   open: boolean
   onClose: () => void
+  sample?: boolean
 }) {
   const band = scoreBand(result.overallScore)
 
@@ -27,8 +29,10 @@ export default function PdfPreview({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  if (typeof document === 'undefined') return null
+
   const download = () => {
-    const url = pdfUrl(scanId)
+    const url = pdfUrl(scanId, sample)
     if (url !== '#') window.open(url, '_blank')
   }
 

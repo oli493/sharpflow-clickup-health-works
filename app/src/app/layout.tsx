@@ -3,9 +3,17 @@ import './globals.css'
 import Chrome from '@/components/Chrome'
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://health.sharpflowconsulting.com'),
   title: 'Sharpflow ClickUp Health',
   description: 'Connect ClickUp and get an automated workspace health assessment.',
   icons: { icon: '/brand/logo-mark.jpg' },
+  openGraph: {
+    title: 'Sharpflow ClickUp Health',
+    description: 'Get a free automated ClickUp workspace health check — score, findings and recommendations.',
+    siteName: 'Sharpflow ClickUp Health',
+    type: 'website',
+  },
+  twitter: { card: 'summary_large_image' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
