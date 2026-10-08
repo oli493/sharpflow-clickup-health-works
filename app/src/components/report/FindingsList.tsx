@@ -134,7 +134,7 @@ export default function FindingsList({ findings, findingsSummary }: Props) {
         </span>
       </div>
 
-      <div className="mt-5 space-y-3">
+      <div className="mt-5 grid items-start gap-3 md:grid-cols-2">
         <AnimatePresence mode="popLayout" initial={false}>
           {list.map((f, i) => (
             <FindingRow key={f.id} finding={f} index={i} open={open.has(f.id)} onToggle={() => toggle(f.id)} />
