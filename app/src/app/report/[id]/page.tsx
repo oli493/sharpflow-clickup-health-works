@@ -195,7 +195,7 @@ function Dashboard({ id, result, connectionId }: { id: string; result: ScanResul
 
         <section id="intelligence" className="mt-16 scroll-mt-[150px]">
           <SectionHeading index="04" title="Intelligence & configuration" hint="AI on top of a deterministic engine" />
-          <div className="mt-7 grid gap-6 lg:grid-cols-2">
+          <div className="mt-7 space-y-6">
             <ExecutiveSummary summary={result.aiSummary} />
             <RulesTeaser rules={result.rules} />
           </div>
