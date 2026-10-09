@@ -73,6 +73,7 @@ export const scanWorkspace = inngest.createFunction(
     const admin = supabaseAdmin()
     const now = Date.now()
 
+    try {
     const progress = (id: string, p: number, stage: string) =>
       step.run(id, async () => {
         await admin.from('scans').update({ status: 'running', progress: p, stage }).eq('id', scanId)
@@ -777,5 +778,20 @@ export const scanWorkspace = inngest.createFunction(
     })
 
     return { scanId, overall: result.overall, grade: result.grade, findings: result.findings.length }
+    } catch (err) {
+      // Record the failure directly so the row never stays "running" forever,
+      // regardless of whether the Inngest failure handler is configured.
+      await admin
+        .from('scans')
+        .update({
+          status: 'failed',
+          progress: 100,
+          stage: 'Failed',
+          error: (err as Error)?.message?.slice(0, 500) ?? 'The audit could not complete.',
+          finished_at: new Date().toISOString(),
+        })
+        .eq('id', scanId)
+      throw err
+    }
   },
 )
