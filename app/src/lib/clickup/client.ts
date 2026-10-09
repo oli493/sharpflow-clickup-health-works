@@ -12,6 +12,7 @@ import type {
 } from './types'
 
 const API = 'https://api.clickup.com/api/v2'
+const REQUEST_TIMEOUT_MS = 30_000
 
 interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined>
@@ -55,25 +56,38 @@ export class ClickUpClient {
     }
 
     let attempt = 0
-    // Retry with exponential backoff on 429 / 5xx.
+    // Retry with exponential backoff on timeouts / 429 / 5xx. Every request has a
+    // hard timeout so a stalled connection errors (and is retried) rather than
+    // hanging the whole step forever.
     while (true) {
-      const res = await fetch(url, {
-        method: opts.method ?? 'GET',
-        headers: {
-          Authorization: this.token,
-          'Content-Type': 'application/json',
-        },
-        body: opts.body ? JSON.stringify(opts.body) : undefined,
-        cache: 'no-store',
-      })
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+      let res: Response | null = null
+      try {
+        res = await fetch(url, {
+          method: opts.method ?? 'GET',
+          headers: {
+            Authorization: this.token,
+            'Content-Type': 'application/json',
+          },
+          body: opts.body ? JSON.stringify(opts.body) : undefined,
+          cache: 'no-store',
+          signal: controller.signal,
+        })
+      } catch {
+        res = null // network error or request timeout
+      } finally {
+        clearTimeout(timer)
+      }
 
-      if (res.status === 429 || res.status >= 500) {
+      if (res === null || res.status === 429 || res.status >= 500) {
         attempt += 1
         if (attempt > 6) {
+          if (res === null) throw new Error(`ClickUp request timed out on ${path}`)
           const text = await res.text().catch(() => '')
           throw new ClickUpError(res.status, text, path)
         }
-        const retryAfter = Number(res.headers.get('retry-after') ?? '0')
+        const retryAfter = res ? Number(res.headers.get('retry-after') ?? '0') : 0
         const waitMs = retryAfter > 0 ? retryAfter * 1000 : Math.min(8000, 2 ** attempt * 400)
         await new Promise((r) => setTimeout(r, waitMs))
         continue
