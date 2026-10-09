@@ -9,7 +9,7 @@ import { generateExecutiveSummary } from '@/lib/llm'
 const DAY = 86_400_000
 const STALE_DAYS = 90
 const ACTIVE_DAYS = 30
-const SAMPLE_LIST_LIMIT = 500
+const SAMPLE_LIST_LIMIT = 1000
 const SAMPLE_ROWS = 100
 const COMMENT_SAMPLE = 60
 // Work is split into small steps so no single serverless invocation approaches
