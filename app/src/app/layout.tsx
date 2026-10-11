@@ -12,8 +12,9 @@ export const metadata: Metadata = {
     description: 'Get a free automated ClickUp workspace health check — score, findings and recommendations.',
     siteName: 'Sharpflow ClickUp Health',
     type: 'website',
+    images: ['/brand/share-card.png'],
   },
-  twitter: { card: 'summary_large_image' },
+  twitter: { card: 'summary_large_image', images: ['/brand/share-card.png'] },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
