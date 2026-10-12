@@ -61,6 +61,11 @@ Sharpflow's pipeline. It is not sold per-seat.
 - Email capture + "Book a call with Sharpflow" CTA.
 - Branded PDF export.
 
+> **Status:** the MVP is **delivered and live** in production at https://health.sharpflowconsulting.com.
+> Since handover, a few extras were added at no charge — a public **sample report** (`/sample`),
+> **social share preview cards**, a branded **link-preview image**, a **lead-magnet playbook**, and
+> hardening of the scan worker so very large workspaces complete reliably.
+
 ### Phase 2 (out of scope for the MVP — quoted separately)
 Recurring/scheduled scans, historical score tracking, continuous monitoring, benchmarking, alerts,
 subscription plans, advanced reporting, additional AI functionality, connectors beyond ClickUp + LLM.
@@ -117,6 +122,8 @@ subscription plans, advanced reporting, additional AI functionality, connectors 
 - **AI executive summary** (streaming, grounded in the engine).
 - **Configurable rules & thresholds** engine.
 - **Branded PDF export**.
+- **Public sample report** (`/sample`) so prospects can preview before connecting.
+- **Social share preview cards** — shared report links unfurl with the score; the landing page uses a Sharpflow brand image.
 
 ### Severity levels
 Critical · High · Medium · Low · Opportunity/Recommendation.
@@ -272,7 +279,9 @@ token management, permissions, missing data.
 
 - Email capture on the results ("Email me the report").
 - Primary CTA: **"Book a call with Sharpflow"**.
-- Sapphire Partner badge as a trust signal.
+- Diamond Partner badge as a trust signal (transparent PNG).
+
+> **Wired:** leads are created in Sharpflow's ClickUp CRM (Sales Pipeline list) via the `LEAD_CAPTURE_*` env vars.
 
 ---
 
@@ -321,10 +330,10 @@ Git is initialised locally and pushed to the Sharpflow GitHub repo (`oli493/shar
 
 ## 14. Milestones
 
-| # | Milestone | Amount |
-| --- | --- | --- |
-| 1 | Initial Product Demo & Build out | $200 |
-| 2 | Product Delivery & Handover | $200 |
+| # | Milestone | Amount | Status |
+| --- | --- | --- | --- |
+| 1 | Initial Product Demo & Build out | $200 | Paid |
+| 2 | Product Delivery & Handover | $200 | Paid (+ bonus) |
 
 (Fixed price $400; offer accepted 04 Oct 2026.)
 
@@ -333,17 +342,17 @@ Git is initialised locally and pushed to the Sharpflow GitHub repo (`oli493/shar
 ## 15. Open questions / decisions
 
 - [x] Light theme to match the site — **decided**.
-- [x] Sapphire badge (file) rather than Diamond (site) — **decided**.
+- [x] Partner badge — transparent PNG (Diamond) — **decided**.
 - [x] Use both site gradients; keep mixing subtle — **decided**.
 - [x] Scoring methodology, weights and thresholds — **defined** (Oli's completed worksheet; see §9).
-- [x] Lead destination — Sharpflow's **ClickUp CRM** (target List to confirm at wiring time).
+- [x] Lead destination — Sharpflow's **ClickUp CRM** (Sales Pipeline list) — **wired**.
 - [x] Book-a-call link — Calendly: `calendly.com/oli-sharpflowconsulting/clickup-health-discussion`.
-- [x] Deployment stack — **Vercel + Supabase + Inngest**.
-- [ ] GitHub repo — create a **monorepo under a Sharpflow org** when Oli confirms.
-- [ ] Domain — subdomain `health.sharpflowconsulting.com` (Oli to confirm).
-- [ ] Test workspace access (for live validation) — Oli to hand over.
-- [ ] PDF export template details — to confirm.
-- [ ] **Secret rotation** — the ClickUp client secret was shared in chat; rotate before/at deploy.
+- [x] Deployment stack — **Vercel + Supabase + Inngest** — **deployed**.
+- [x] Domain — `health.sharpflowconsulting.com` — **live**.
+- [x] Test workspace access (for live validation) — **done** (real workspaces connected and scanned).
+- [x] PDF export — **branded, live**.
+- [ ] **Report email** — actually emailing the report needs a sending address on the Sharpflow domain (pending DNS/provider).
+- [ ] **Repo visibility** — the GitHub repo is public; making it private is an owner-only step.
 
 ---
 

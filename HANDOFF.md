@@ -8,7 +8,7 @@
 > **No secret values are in this file.** Credentials live in `app/.env.local` (gitignored) and the
 > host/platform settings. See §13.
 
-Last updated: 06 Oct 2026 · repo HEAD at time of writing: `3c0faf6` (local metric-coverage work uncommitted)
+Last updated: 12 Oct 2026 · repo HEAD at time of writing: `dcce457`
 
 ---
 
@@ -18,14 +18,12 @@ Last updated: 06 Oct 2026 · repo HEAD at time of writing: `3c0faf6` (local metr
   workspace via OAuth (read-only), runs an automated audit, and produces a 0–100 **ClickUp Health
   Score** with category scores, findings, severities, recommendations and a polished branded
   dashboard + PDF. Built for **Sharpflow Consulting** as a **lead-generation freebie**.
-- **Where we are:** Phase B is built and **runs end-to-end locally on real ClickUp data**
-  (connect → workspace picker → background scan → report → PDF). Latest real scan of Oli's demo
-  workspace: **65/100 (C), 7/7 categories measured, 20 findings** (metric coverage completed
-  06 Oct 2026 — Adoption is no longer excluded). **Not yet deployed.**
-- **Biggest blocker:** ClickUp's OAuth is currently **broken on ClickUp's side**; we use a
-  **dev personal token** workaround locally. Production still needs OAuth.
-- **Next actions:** wire the AI summary (Oli's key arrived 06 Oct but is **user-scoped**, so it
-  needs his Anthropic **workspace id**), then deploy to Vercel + Supabase Pro + Inngest.
+- **Where we are:** **deployed and live** at **https://health.sharpflowconsulting.com** (Vercel
+  tracks `main` → every push auto-deploys). The full flow works in production: connect → workspace
+  picker → background scan → report → branded PDF → lead capture. AI summary live (Claude Haiku 4.5).
+- **Blockers:** none. The only outstanding freebie is *emailed* reports, which needs a sending
+  address / DNS record on the Sharpflow domain.
+- **Next:** (optional) report email; Phase 2 roadmap — see §5 (scope) and §20 (post-launch changes).
 
 ---
 
@@ -36,10 +34,11 @@ Last updated: 06 Oct 2026 · repo HEAD at time of writing: `3c0faf6` (local metr
 - **Upwork job:** "SaaS Developer Needed for ClickUp Audit & Scoring Product"
   - Job URL: https://www.upwork.com/jobs/~022106474084368307973
   - Job ID: `2106474084368307973`
-- **Contract:** **fixed price $400**, paid as **two milestones of $200**:
-  1. **"Initial Product Demo & Build out"**
-  2. **"Product Delivery & Handover"**
-  - Upwork freelancer service fee 10% → **expected net ≈ $360**.
+- **Contract:** **fixed price $400**, paid as **two milestones of $200** — **both paid** (Oli also
+  added a thank-you bonus):
+  1. **"Initial Product Demo & Build out"** — paid
+  2. **"Product Delivery & Handover"** — paid
+  - Upwork freelancer service fee 10% → **expected net ≈ $360** (+ bonus).
   - **Offer accepted 04 Oct 2026** (offer id `112710148`).
 - **Freelancer:** Misho (Mihail) Todorov — Upwork account `misho_t` / org_uid `1891956117832253066`,
   GitHub `Misho-1019`, email `mikailtorres99@gmail.com`.
@@ -112,6 +111,19 @@ Last updated: 06 Oct 2026 · repo HEAD at time of writing: `3c0faf6` (local metr
   74af7ff  chore: restructure to monorepo (prototype/ + app/), add README
   818a860  feat: credible scoring calibration (coverage rule, no stubs), LLM layer, dev-token connect, real scan metrics
   6e5cc98  docs: add HANDOFF.md
+  ... (deploy + post-launch work — full log via `git log --oneline`)
+  f29ae6f  feat: capture leads into the Sharpflow ClickUp CRM list
+  d8527d9  feat: real scan progress, Diamond partner badge, instant cursor
+  7cd1712  fix: resilient ClickUp connect (hardened callback, lazy workspace fetch, retries)
+  87846a6  fix: carry connection id from report to workspace picker
+  18f2aa5  feat: transparent Diamond badge + two-column findings layout
+  0a8e867  feat: rules & thresholds as a collapsed dropdown; AI summary full width
+  7cd74f1  feat: public sample report, OG share cards, lead-magnet playbook
+  fabca1e  fix: handle unauthorised ClickUp workspaces + failed-scan state
+  dfe2745  fix: chunk scan worker into small steps (no more 504 timeouts)
+  4f32415  fix: record failed scans directly (try/catch)
+  74a476b  chore: raise list coverage cap to 1000
+  dcce457  feat: use Sharpflow brand card as the landing link-preview image
   ```
 
 ---
@@ -277,12 +289,12 @@ authorizing user's permissions, so the app **only ever reads**. Personal tokens 
 | Conditional | Time in Status (needs the ClickUp ClickApp enabled); Templates (task/list/folder only) |
 | Not exposed by the public API | Forms (config), Automations, Dashboards, Whiteboards, Workload, ClickApps enabled-state, ClickUp AI usage, installed Integrations (only webhooks visible) |
 
-**⚠️ CRITICAL — ClickUp OAuth is currently broken on ClickUp's side.** Selecting a workspace returns
-*"Whoops! Unable to authorize your teams. Please try again."* ClickUp support has confirmed it's a
-ClickUp-side issue (see the n8n community thread). Our callback is never reached. **Workaround in
-dev:** `GET /api/clickup/dev-connect` using `DEV_CLICKUP_TOKEN` (Misho's ClickUp personal token,
-`pk_...`, scoped to the demo workspace). Keep OAuth for production; re-test once ClickUp fixes it
-and/or on a real HTTPS domain.
+**OAuth works in production.** Early on, ClickUp's OAuth was broken platform-side (selecting a
+workspace returned *"Whoops! Unable to authorize your teams"*); that resolved, and OAuth now works on
+the real HTTPS domain. Note ClickUp scopes the token to **the single workspace selected at consent**
+— `GET /team` may list more workspaces than the token can actually read, which surfaces as
+`OAUTH_192 "Workspace not authorized"`. The app detects this and asks the user to reconnect.
+`GET /api/clickup/dev-connect` (`DEV_CLICKUP_TOKEN`) remains **dev-only** (404 in production).
 
 ---
 
@@ -352,6 +364,12 @@ commented in 30 days.
 **Engine rules:**
 - **No double-counting:** due-date & estimate coverage scored **only in Reporting**.
 - **Opportunity severity = 0 score penalty.**
+- **Magnitude scaling:** each fired signal's deduction scales from **1× at the threshold to 1.5× at
+  the ceiling** (so a signal just over the line costs less than one near the ceiling).
+- **Tiered stale / dormant:** stale 30–60d → Low · 60–90d → Medium · 90d+ → High; dormant Lists
+  (60d Medium / 90d High) and dormant Spaces are tiered the same way.
+- **"Insufficient data":** if the connecting token can't see enough (non-admin/empty workspace) the
+  report shows an insufficient-data state instead of a misleading score.
 - **Category coverage rule:** a category is scored only if ≥50% of its signal weight is measurable;
   otherwise it is **excluded from the overall** and shown as **"Not measured"** (surfaced as
   `coverage.scored / coverage.total`).
@@ -370,9 +388,9 @@ Values live **only** in `app/.env.local` (gitignored) and the platform settings 
 |---|---|
 | `CLICKUP_CLIENT_ID` | `7B4OAURBRZ4OE9S52H5UP9M1PKPIXW2V` (non-secret) |
 | `CLICKUP_CLIENT_SECRET` | 🔐 secret (in env only) |
-| `CLICKUP_REDIRECT_URI` | `http://localhost:3000/api/clickup/callback` |
+| `CLICKUP_REDIRECT_URI` | dev: `http://localhost:3000/api/clickup/callback`; production: `https://health.sharpflowconsulting.com/api/clickup/callback` |
 | `DEV_CLICKUP_TOKEN` | 🔐 dev-only personal ClickUp token (`pk_...`) |
-| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` |
+| `NEXT_PUBLIC_APP_URL` | dev `http://localhost:3000`; production `https://health.sharpflowconsulting.com` |
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://iijehqonmdfhsutkbwsz.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 🔐 (anon — public by design, still in env only) |
 | `SUPABASE_SERVICE_ROLE_KEY` | 🔐 full DB access — server-side only |
@@ -380,14 +398,17 @@ Values live **only** in `app/.env.local` (gitignored) and the platform settings 
 | `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY` | blank for dev (Inngest dev server needs none) |
 | `LLM_API_KEY` | 🔐 Anthropic key (user-scoped) |
 | `LLM_MODEL` | `claude-haiku-4-5-20251001` |
-| `LLM_WORKSPACE_ID` | **blank — REQUIRED.** Oli's key is user-scoped (`sk-ant-usr-…`); without this header the Anthropic API returns `400 … must include the anthropic-workspace-id header`. Ask Oli for the workspace id (Console → Settings → Workspace). |
-| `LEAD_CAPTURE_WEBHOOK` / `LEAD_CAPTURE_LIST_ID` | blank (leads → Sharpflow ClickUp CRM, pending) |
+| `LLM_WORKSPACE_ID` | **set** (`wrkspc_01XvgD9pRNyCE3etUvUjK9kq`) — required because Oli's key is user-scoped; without the header the Anthropic API returns `400 … must include the anthropic-workspace-id header`. |
+| `LEAD_CAPTURE_WEBHOOK` / `LEAD_CAPTURE_LIST_ID` / `LEAD_CAPTURE_CLICKUP_TOKEN` | set — leads are created in Sharpflow's ClickUp CRM (Sales Pipeline list `901325698521`). |
 | `TOKEN_ENCRYPTION_KEY` | 🔐 32-byte AES-256-GCM key |
 | `NEXT_PUBLIC_MOCK` | `0` (real mode). Set `1` to preview the mock demo. |
 
 ---
 
 ## 12. How to run (exact commands)
+
+> Full operator guide — deploy, Inngest sync, database, scoring rules, the scan worker and
+> troubleshooting: see [`handover/Runbook.md`](./handover/Runbook.md).
 
 **Prototype**
 ```
@@ -421,73 +442,51 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 
 ## 13. Verified state / real results
 
-- `app` **`npm test`** → 20/20 pass (scoring engine + PDF). **`tsc`** clean. (`npm run build` clean as of the last committed state.)
-- **Schema** applied and reachable (REST 200 on all 6 tables).
-- **PDF** route returns HTTP 200, `application/pdf`, ~649 KB.
-- **Real scans** of `SHARPFLOW CONSULTING DEMO SPACE` (30 members · 21 Spaces · 113 Lists · 705 tasks):
-  - Scan `07986738-…` → **81/100 (B)** *(before calibration — inflated)*
-  - Scan `cb46dc14-…` → **68/100 (C)**
-  - Scan `42137fcf-…` → **62/100 (C), 6/7 categories measured, 14 findings (4 High)** *(before metric coverage)*
-  - Scan `60dc0ea2-…` → **65/100 (C), 7/7 categories measured, 20 findings (4 High, 2 Opportunity)** *(current)*
-    - Categories: Architecture **64** · Workflow **68** · Data & Governance **45** · Operational **66** ·
-      Adoption **83** *(now scored)* · Platform Utilisation **93** *(honest, was 100)* · Reporting **35**.
-    - New findings now firing: duplicate status names, inactive members (60%), comment frequency
-      (0/week), Views (1.9/Space), time tracking (1% → Opportunity), Goals (0 → Opportunity).
-- **Dev connection id:** `b88fe19c-f505-46f0-8544-5ab5b02793c0` (team `90141283722`).
+**Live:** https://health.sharpflowconsulting.com · sample report at `/sample`.
+- `app` **`npm test`** → **26/26 pass** (scoring engine + PDF). **`tsc`** clean. **`next build`** clean.
+- **Schema** applied and reachable (REST 200 on all tables).
+- **PDF** route returns HTTP 200, `application/pdf` (~450 KB for a real report).
+- **Real end-to-end scans in production** (Vercel + Inngest Cloud), e.g.:
+  - `EES Agency` — **13 Spaces · 200 Folders · 388 Lists · ~48,200 tasks** → **64/100 (C)**, 19 findings.
+    The largest workspace seen; a full scan takes **~13–15 min** on the chunked worker and completes reliably.
+  - `SHARPFLOW CONSULTING LTD` → **74/100 (C)** · `Astrocorn Industries` → **58/100 (D)** ·
+    `Santa Iontchevska's Workspace` → **54–55/100 (D)**.
+- **Failure handling:** a failed scan is recorded as `failed` with its error; a stale-scan reaper marks
+  any `running` scan `failed` after 20 min — so nothing hangs indefinitely.
 
 ---
 
 ## 14. Open issues & remaining work
 
-**Done 06 Oct 2026 (local, uncommitted)**
-1. ✅ **Platform Utilisation no longer flatters:** Views per Space are read (`GET /space/{id}/view`),
-   and the time-tracking band is now `< 5% → Opportunity` (a **deviation** from Oli's literal
-   "0 logged in 90d" — confirm with him). Demo score dropped 100 → 93.
-2. ✅ **Adoption & Activity is now scored** (coverage 7/7): inactive members (activity inferred from
-   task creator/assignee dates + commenters), activity concentration, comment frequency (sampled
-   ≤60 recently-updated tasks), dormant Spaces.
-3. ✅ Added signals: duplicate status names, missing required Custom Fields, open subtasks under
-   closed parents; insight-only Goals + Custom Task Types are now read.
-4. ✅ **Bug fixed:** Next.js cached Supabase's internal GETs, so `/api/scans/[id]` froze on its first
-   response (progress never advanced — would break production). Fixed with a no-store fetch in
-   `lib/supabase/server.ts`.
-5. ✅ Owner/Admin **limited-coverage banner** implemented (role resolved from `/team`, flag on
-   `ScanResult`).
+**Done**
+- ✅ Metric coverage (Platform Utilisation honest, Adoption scored, new signals, limited-coverage banner).
+- ✅ AI executive summary live (Claude Haiku 4.5 + workspace id).
+- ✅ **Deployed** to Vercel + Supabase + Inngest Cloud — live on `health.sharpflowconsulting.com`.
+- ✅ **Lead capture wired** → Sharpflow's ClickUp CRM (Sales Pipeline list).
+- ✅ Scan worker hardened for very large workspaces (chunked steps, request timeouts, failure recording).
 
 **Remaining**
-6. **AI summary:** Oli's key arrived 06 Oct but is **user-scoped** → still needs `LLM_WORKSPACE_ID`.
-   Until then the report uses templated text (the fallback now logs the reason).
-7. **`avgTimeInStatusDays`** still unmeasured (needs the Time in Status ClickApp) — left `undefined`
-   so the coverage rule handles it.
-8. **Docs** utilisation stays "not measurable" (the Docs API is v3-only).
-
-**OAuth**
-9. ClickUp OAuth still fails platform-side; re-test after ClickUp fixes it and/or on the real HTTPS
-   domain. Keep the dev-token route strictly non-production.
-
-**Deploy**
-10. Deploy to **Vercel** (Root Directory = `app`), add env vars, register the **production redirect
-   URL** on the ClickUp app, point **`health.sharpflowconsulting.com`** (one CNAME), sync **Inngest
-   Cloud**, then verify the live flow.
-
-**Leads / CRM**
-11. Wire **lead capture → Sharpflow's ClickUp CRM List** (needs the target List + token/webhook).
+- **Report email (optional freebie):** the "Email me the report" button captions the send but does not
+  yet deliver the PDF — needs a sending address / DNS record on the Sharpflow domain (Resend + 2 DNS
+  records, or an app password on Oli's mailbox).
+- **`avgTimeInStatusDays`** unmeasured (needs the Time in Status ClickApp) — left `undefined` so the
+  coverage rule handles it.
+- **Docs** utilisation stays "not measurable" (the Docs API is v3-only).
 
 **Housekeeping**
-12. The GitHub repo is **public** — consider making it private.
-13. The ClickUp **client secret** and Anthropic key were shared in chat → consider **rotating** before
-    launch.
+- The GitHub repo is **public** — consider making it private (owner-only).
+- The ClickUp **client secret** and Anthropic key were shared in chat → consider rotating.
 
 ---
 
 ## 15. What Oli still needs to provide
 
-- **A test workspace** — ✅ done (both workspaces added; demo used).
-- **The CRM List** (name/link) that leads should be created in.
-- **Anthropic workspace id** — key received 06 Oct (`sk-ant-usr-…`) but it is **user-scoped**, so the
-  **workspace id** is still needed (or a workspace-scoped key) before the AI summary works.
-- **Domain** decision (`health.sharpflowconsulting.com`) → add the CNAME at deploy.
-- **Production redirect URL** to add to the ClickUp app (sent at deploy time).
+- **A test workspace** — ✅ done.
+- **The CRM List** leads are created in — ✅ done (Sharpflow Sales Pipeline list).
+- **Anthropic workspace id** — ✅ done (`LLM_WORKSPACE_ID` set; AI summary live).
+- **Domain** — ✅ done (`health.sharpflowconsulting.com` live).
+- **Production redirect URL** on the ClickUp app — ✅ done.
+- **[Optional]** a sending address / DNS record on the Sharpflow domain to switch on **emailed reports**.
 
 ---
 
@@ -513,6 +512,7 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 - **Upwork MCP:** `org_uid 1891956117832253066`; chat room `room_b0cebea6c048fc17a6addb6205bf3683`
   (tools: `upwork_upwork__list_accounts`, `get_messages`, `find_saved_jobs`, …)
 - **GitHub:** https://github.com/oli493/sharpflow-clickup-health-works
+- **Production app:** https://health.sharpflowconsulting.com (sample report: `/sample`)
 - **Supabase dashboard:** https://supabase.com/dashboard/project/iijehqonmdfhsutkbwsz
 - **ClickUp API docs:** https://developer.clickup.com
 - **Vercel:** https://vercel.com · **Inngest:** https://app.inngest.com
@@ -544,3 +544,25 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 - **Drill-down** = click a metric/finding/Space to see the underlying items (a drawer with a table).
 - **Freebie** = Oli's model: give the tool to clients (potential + existing) to generate leads.
 - **Coverage** = how many categories had enough measurable data to be scored.
+
+---
+
+## 20. Post-launch changes (since first handover)
+
+- **Scan worker rewritten for scale.** Task analysis is split into small steps
+  (`LIST_BATCH = 25` Lists per step; structure in `SPACE_BATCH = 4` Spaces per step) with live
+  per-chunk progress, plus a **30 s per-request timeout** on the ClickUp client. This fixed a hard
+  bug where one monolithic step exceeded Vercel's 5-minute invocation limit on large workspaces
+  (`FUNCTION_INVOCATION_TIMEOUT`) and left the scan stuck at 35% forever.
+- **Failure + stale handling.** The handler records failures directly (try/catch) → the scan row is
+  marked `failed` with its error; an Inngest `onFailure` and a 20-minute **stale-scan reaper** back it up.
+- **Coverage cap** raised to **1000 Lists** (`SAMPLE_LIST_LIMIT`).
+- **Unauthorised-workspace handling.** ClickUp `OAUTH_192` is mapped to a clear "reconnect and select
+  this workspace" message + a Reconnect button; the workspace picker only lists readable workspaces.
+- **Report UX:** findings in a **two-column grid**; **Rules & thresholds** as a collapsed dropdown;
+  **AI summary full-width**; **transparent Diamond partner badge**.
+- **Sample report** at `/sample` (synthetic "Northwind Creative" data) + a "See a sample report" link.
+- **Social share cards:** report/sample links unfurl with the **score**; the landing uses a static
+  Sharpflow brand image (`app/public/brand/share-card.png`).
+- **Lead-magnet playbook** at `handover/Lead-Magnet-Playbook.md`.
+- Performance: DOM-driven card tilt, click-only 3D raycasting, offscreen canvas pause, instant cursor.
