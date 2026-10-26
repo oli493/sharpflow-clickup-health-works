@@ -35,7 +35,13 @@ const SPACE_BATCH = 2
 const ROLE_LABEL: Record<number, string> = { 1: 'Owner', 2: 'Admin', 3: 'Member', 4: 'Guest' }
 
 interface ScanEvent {
-  data: { scanId: string; connectionId: string; teamId: string; excludeSpaceIds?: string[] }
+  data: {
+    scanId: string
+    connectionId: string
+    teamId: string
+    workspaceName?: string
+    excludeSpaceIds?: string[]
+  }
 }
 
 type ListRef = {
@@ -140,6 +146,7 @@ export const scanWorkspace = inngest.createFunction(
     // spinning forever — without this the scan row stays "running" on error.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onFailure: async ({ event }: any) => {
+      if (process.env.SCAN_DRY_RUN === '1') return
       const scanId = (event?.data?.event?.data?.scanId as string | undefined) ?? undefined
       if (!scanId) return
       const message =
@@ -160,27 +167,35 @@ export const scanWorkspace = inngest.createFunction(
   { event: 'scan/requested' },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async ({ event, step }: { event: ScanEvent; step: any }) => {
-    const { scanId, connectionId, teamId, excludeSpaceIds = [] } = event.data
+    const { scanId, connectionId, teamId, workspaceName, excludeSpaceIds = [] } = event.data
     const admin = supabaseAdmin()
     const now = Date.now()
+    const dryRun = process.env.SCAN_DRY_RUN === '1'
 
     try {
-    const progress = (id: string, p: number, stage: string) =>
-      step.run(id, async () => {
+    const progress = (id: string, p: number, stage: string) => {
+      if (dryRun) {
+        console.log(`[scan-dry-run] ${p}% ${stage}`)
+        return Promise.resolve()
+      }
+      return step.run(id, async () => {
         await admin.from('scans').update({ status: 'running', progress: p, stage }).eq('id', scanId)
       })
+    }
 
-    await step.run('mark-started', async () => {
-      await admin
-        .from('scans')
-        .update({
-          status: 'running',
-          progress: 5,
-          stage: 'Connecting to ClickUp',
-          started_at: new Date().toISOString(),
-        })
-        .eq('id', scanId)
-    })
+    if (!dryRun) {
+      await step.run('mark-started', async () => {
+        await admin
+          .from('scans')
+          .update({
+            status: 'running',
+            progress: 5,
+            stage: 'Connecting to ClickUp',
+            started_at: new Date().toISOString(),
+          })
+          .eq('id', scanId)
+      })
+    }
 
     const ctx = await step.run('load-connection', async () => {
       const { data, error } = await admin
@@ -907,11 +922,11 @@ export const scanWorkspace = inngest.createFunction(
       memberActivity: [...memberActivity.entries()],
       dataQuality: {
         partial,
-        listsScanned: coverageLists.listsScanned,
+        listsScanned: Math.max(0, coverageLists.listsScanned - failedLists.length),
         listsTotal: coverageLists.listsTotal,
         listsSampled: coverageLists.sampled,
         tasksScanned: totalTasks,
-        tasksExpected: expectedTasks || totalTasks,
+        tasksExpected: Math.max(expectedTasks || totalTasks, totalTasks),
         truncated,
         failedLists: failedLists.length,
       },
@@ -1049,10 +1064,12 @@ export const scanWorkspace = inngest.createFunction(
     const report = toScanResult({
       id: scanId,
       workspace: {
-        name: (await step.run('workspace-name', async () => {
-          const { data } = await admin.from('scans').select('workspace_name').eq('id', scanId).single()
-          return data?.workspace_name ?? 'Workspace'
-        })) as string,
+        name: dryRun
+          ? workspaceName ?? 'Validation workspace'
+          : ((await step.run('workspace-name', async () => {
+              const { data } = await admin.from('scans').select('workspace_name').eq('id', scanId).single()
+              return data?.workspace_name ?? 'Workspace'
+            })) as string),
         members: structure.memberCount,
         spaces: structure.spaceCount,
         folders: structure.folderCount,
@@ -1075,7 +1092,9 @@ export const scanWorkspace = inngest.createFunction(
     }
 
     // AI executive summary — explains the engine; falls back to templated text on failure.
-    const finalReport = await step.run('ai-summary', async () => {
+    const finalReport = dryRun
+      ? report
+      : await step.run('ai-summary', async () => {
       try {
         const ai = await generateExecutiveSummary({
           workspace: report.workspaceName,
@@ -1099,7 +1118,7 @@ export const scanWorkspace = inngest.createFunction(
       }
     })
 
-    await step.run('store-list-stats', async () => {
+    if (!dryRun) await step.run('store-list-stats', async () => {
       if ((scan.perList as unknown[]).length) {
         await admin.from('list_stats').insert(
           (scan.perList as Record<string, unknown>[]).map((l) => ({
@@ -1123,7 +1142,7 @@ export const scanWorkspace = inngest.createFunction(
 
     await progress('progress-90', 90, 'Generating recommendations')
 
-    await step.run('store-results', async () => {
+    if (!dryRun) await step.run('store-results', async () => {
       await admin.from('scans').update({
         status: 'complete',
         progress: 100,
@@ -1152,20 +1171,35 @@ export const scanWorkspace = inngest.createFunction(
       }
     })
 
+    if (dryRun) {
+      return {
+        scanId,
+        overall: result.overall,
+        grade: result.grade,
+        findings: result.findings.length,
+        result: finalReport,
+        metrics: metrics2,
+        coverage: result.coverage,
+        failedLists: failedLists.map(({ listId, listName, error }) => ({ listId, listName, error })),
+      }
+    }
+
     return { scanId, overall: result.overall, grade: result.grade, findings: result.findings.length }
     } catch (err) {
       // Record the failure directly so the row never stays "running" forever,
       // regardless of whether the Inngest failure handler is configured.
-      await admin
-        .from('scans')
-        .update({
-          status: 'failed',
-          progress: 100,
-          stage: 'Failed',
-          error: (err as Error)?.message?.slice(0, 500) ?? 'The audit could not complete.',
-          finished_at: new Date().toISOString(),
-        })
-        .eq('id', scanId)
+      if (!dryRun) {
+        await admin
+          .from('scans')
+          .update({
+            status: 'failed',
+            progress: 100,
+            stage: 'Failed',
+            error: (err as Error)?.message?.slice(0, 500) ?? 'The audit could not complete.',
+            finished_at: new Date().toISOString(),
+          })
+          .eq('id', scanId)
+      }
       throw err
     }
   },

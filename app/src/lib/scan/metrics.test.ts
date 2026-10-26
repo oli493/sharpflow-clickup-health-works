@@ -126,6 +126,17 @@ describe('workflow signatures', () => {
     })
     expect(stats.unusedStatuses).toBe(0)
   })
+
+  it('reports the worst workflow, not the sum across workflows', () => {
+    const stats = workflowStats(
+      [
+        { id: 's1', name: 'One', statuses },
+        { id: 's2', name: 'Two', statuses: [{ status: 'Open', type: 'open' }] },
+      ],
+      {},
+    )
+    expect(stats.unusedStatuses).toBe(2)
+  })
 })
 
 describe('custom field inventory', () => {

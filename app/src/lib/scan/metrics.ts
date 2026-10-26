@@ -155,9 +155,11 @@ export function workflowStats(
     for (const spaceId of entry.spaceIds) {
       for (const status of Object.keys(usedBySpace[spaceId] ?? {})) used.add(status)
     }
+    let unusedInWorkflow = 0
     for (const status of entry.statuses) {
-      if (!used.has(status.status)) unusedStatuses += 1
+      if (!used.has(status.status)) unusedInWorkflow += 1
     }
+    unusedStatuses = Math.max(unusedStatuses, unusedInWorkflow)
   }
 
   const rows: StatusUsageRow[] = []
