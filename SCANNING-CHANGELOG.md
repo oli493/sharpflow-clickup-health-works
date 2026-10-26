@@ -1,6 +1,6 @@
 # Scanning changelog
 
-## v1.1 — scanner correctness
+## v1.1 Ã¢â‚¬â€ scanner correctness
 
 Branch: `fix/scanner-correctness`
 
@@ -14,10 +14,10 @@ Corrects the data collection layer without changing the agreed scoring model.
 - New/empty Lists and Spaces are no longer counted as dormant 90d+.
 - Distinct workflows are counted from unique status signatures, not Space count.
 - Unused statuses and statuses-per-workflow are calculated per workflow.
-- Custom-field bloat and “0% filled” include configured fields that never appear on a task.
+- Custom-field bloat and Ã¢â‚¬Å“0% filledÃ¢â‚¬Â include configured fields that never appear on a task.
 - Comment frequency is sampled across Lists and filtered to the last 30 days.
 - Activity concentration uses recent activity, not historical task volume.
-- Time tracking uses workspace time entries for the last 90 days; falls back to “any time logged”
+- Time tracking uses workspace time entries for the last 90 days; falls back to Ã¢â‚¬Å“any time loggedÃ¢â‚¬Â
   with an explicit label.
 - Partial failures are recorded. Material missing data fails the scan instead of publishing a
   misleading score.
@@ -39,13 +39,13 @@ Every change should be explainable by one of the fixes above.
 ### Validation
 
 - `npm run typecheck`
-- `npm test` — 56 passing, 1 validation test skipped by default
+- `npm test` Ã¢â‚¬â€ 56 passing, 1 validation test skipped by default
 - `npm run build`
 - Real-workspace run on **Eyes On** (383 Lists, 81,346 tasks):
-  - baseline **76 (B)** → branch **75 (B)**
+  - baseline **76 (B)** Ã¢â€ â€™ branch **75 (B)**
   - full coverage, 383/383 Lists, 0 failures, 31/32 signals
-  - Architecture 87 → 88 (dormant fix)
-  - Reporting 48 → 45 (open-task due-date coverage is genuinely lower than
+  - Architecture 87 Ã¢â€ â€™ 88 (dormant fix)
+  - Reporting 48 Ã¢â€ â€™ 45 (open-task due-date coverage is genuinely lower than
     the old all-task number)
   - Workflow restored to 100 after reporting the worst workflow instead of
     summing unused statuses across workflows
@@ -58,5 +58,27 @@ Every change should be explainable by one of the fixes above.
 
 ### Not included
 
-- Speed/concurrency work.
 - Production environment, domain, key rotation or database migrations.
+
+## v1.2 - scan throughput
+
+Branch: `perf/scan-throughput`
+
+- Adaptive rate governor using ClickUp `X-RateLimit-*` headers
+- Task page windows (parallel pagination)
+- Per-List scanning moved to `lib/scan/tasks.ts`
+- Four Lists processed concurrently, with 16-page windows inside each List
+- Parallel structure discovery and comment sampling
+- Retry on truncated/invalid JSON
+- Request/latency telemetry in dry-run validation
+
+Measured on Eyes On: full 383/383 Lists, 81,340 tasks, 2,720 requests, 717 ms average latency,
+**6.9 minutes** (down from ~32-45 minutes uncached). No failed Lists.
+
+A cached sequential run (`CLICKUP_PAGE_WINDOW=1`) produced the same task count and score,
+confirming parallel pagination does not drop or duplicate tasks.
+
+End-to-end test on the branch: report page, PDF (~444 KB) and all repaired drill-downs verified;
+the test scan and child rows were deleted afterward.
+
+Ready to merge correctness + speed.
