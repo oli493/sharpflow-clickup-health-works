@@ -67,18 +67,6 @@ export interface ScanResult {
   findingsSummary: { critical: number; high: number; opportunity: number; total: number }
   findings: FindingResult[]
   coverage: { scored: number; total: number }
-  dataQuality?: {
-    partial: boolean
-    listsScanned: number
-    listsTotal: number
-    listsSampled: boolean
-    tasksScanned: number
-    tasksExpected: number
-    truncated: boolean
-    failedLists: number
-    signalsMeasured?: number
-    signalsTotal?: number
-  }
   /** True when the connecting user is not an Owner/Admin, so visibility is limited. */
   coverageLimited: boolean
   performingWell: { title: string; detail: string }[]

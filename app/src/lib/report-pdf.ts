@@ -150,26 +150,6 @@ export async function buildReportPdf(result: ScanResult, opts: ReportPdfOptions 
   page.drawText(`${result.findingsSummary.total} findings`, { x: M + 190, y: scoreY - 60, size: 10, font, color: GREY })
   y -= 84
 
-  if (result.dataQuality) {
-    const quality = result.dataQuality
-    if (
-      quality.partial ||
-      quality.truncated ||
-      quality.listsSampled ||
-      quality.tasksScanned < quality.tasksExpected
-    ) {
-      para(
-        `Coverage note: ${quality.listsScanned.toLocaleString()} of ${quality.listsTotal.toLocaleString()} Lists and ${quality.tasksScanned.toLocaleString()} of ${quality.tasksExpected.toLocaleString()} tasks were read.` +
-          `${quality.truncated ? ' Some very large Lists were safety-capped.' : ''}` +
-          `${quality.listsSampled ? ' The workspace exceeded the List coverage cap.' : ''}` +
-          `${quality.failedLists > 0 ? ` ${quality.failedLists} Lists could not be read.` : ''}` +
-          `${quality.signalsMeasured != null && quality.signalsTotal != null ? ` ${quality.signalsMeasured} of ${quality.signalsTotal} scored signals were measurable.` : ''}`,
-        8.5,
-        GREY,
-      )
-    }
-  }
-
   text(result.summaryHeadline, 14, GREEN, bold)
   para(result.summaryBody, 10, GREY)
 

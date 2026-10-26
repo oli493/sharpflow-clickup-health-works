@@ -15,87 +15,28 @@ export const DATASET_META: Record<string, DatasetMeta> = {
       { key: 'assignee', label: 'Assignee' },
       { key: 'space', label: 'Space' },
       { key: 'due', label: 'Overdue', align: 'right' },
-      { key: 'status', label: 'Status', align: 'right' },
       { key: 'priority', label: 'Priority', align: 'right' },
     ],
   },
   stale: {
     title: 'Stale tasks',
-    subtitle: 'Sample of open tasks untouched for 30+ days',
+    subtitle: 'Open tasks untouched for 30+ days',
     columns: [
       { key: 'task', label: 'Task' },
       { key: 'owner', label: 'Owner' },
       { key: 'space', label: 'Space' },
       { key: 'lastUpdate', label: 'Last update', align: 'right' },
-      { key: 'ageDays', label: 'Age (days)', align: 'right' },
-      { key: 'status', label: 'Status', align: 'right' },
-    ],
-  },
-  'stale-30': {
-    title: 'Stale tasks (30d+)',
-    subtitle: 'Sample of open tasks untouched for 30+ days',
-    columns: [
-      { key: 'task', label: 'Task' },
-      { key: 'owner', label: 'Owner' },
-      { key: 'space', label: 'Space' },
-      { key: 'lastUpdate', label: 'Last update', align: 'right' },
-      { key: 'ageDays', label: 'Age (days)', align: 'right' },
-      { key: 'status', label: 'Status', align: 'right' },
-    ],
-  },
-  'stale-60': {
-    title: 'Stale tasks (60d+)',
-    subtitle: 'Sample of open tasks untouched for 60+ days',
-    columns: [
-      { key: 'task', label: 'Task' },
-      { key: 'owner', label: 'Owner' },
-      { key: 'space', label: 'Space' },
-      { key: 'lastUpdate', label: 'Last update', align: 'right' },
-      { key: 'ageDays', label: 'Age (days)', align: 'right' },
-      { key: 'status', label: 'Status', align: 'right' },
-    ],
-  },
-  'stale-90': {
-    title: 'Stale tasks (90d+)',
-    subtitle: 'Sample of open tasks untouched for 90+ days',
-    columns: [
-      { key: 'task', label: 'Task' },
-      { key: 'owner', label: 'Owner' },
-      { key: 'space', label: 'Space' },
-      { key: 'lastUpdate', label: 'Last update', align: 'right' },
-      { key: 'ageDays', label: 'Age (days)', align: 'right' },
       { key: 'status', label: 'Status', align: 'right' },
     ],
   },
   'missing-due': {
-    title: 'Tasks without a due date',
-    subtitle: 'Active tasks missing a due date',
+    title: 'Tasks without an owner or due date',
+    subtitle: 'Active tasks missing critical scheduling data',
     columns: [
       { key: 'task', label: 'Task' },
       { key: 'assignee', label: 'Assignee' },
       { key: 'space', label: 'Space' },
       { key: 'created', label: 'Created', align: 'right' },
-    ],
-  },
-  'missing-owner': {
-    title: 'Tasks without an owner',
-    subtitle: 'Active tasks missing an assignee',
-    columns: [
-      { key: 'task', label: 'Task' },
-      { key: 'space', label: 'Space' },
-      { key: 'status', label: 'Status', align: 'right' },
-      { key: 'created', label: 'Created', align: 'right' },
-    ],
-  },
-  'fragmented-lists': {
-    title: 'Fragmented Lists',
-    subtitle: 'Lists with fewer than 5 open tasks',
-    columns: [
-      { key: 'list', label: 'List' },
-      { key: 'space', label: 'Space' },
-      { key: 'openTasks', label: 'Open tasks', align: 'right' },
-      { key: 'tasks', label: 'All tasks', align: 'right' },
-      { key: 'lastActivity', label: 'Last activity', align: 'right' },
     ],
   },
   'custom-fields': {
@@ -129,26 +70,6 @@ export const DATASET_META: Record<string, DatasetMeta> = {
   'dormant-lists': {
     title: 'Dormant Lists',
     subtitle: 'Lists with no task activity in 60+ days',
-    columns: [
-      { key: 'list', label: 'List' },
-      { key: 'space', label: 'Space' },
-      { key: 'tasks', label: 'Tasks', align: 'right' },
-      { key: 'lastActivity', label: 'Last activity', align: 'right' },
-    ],
-  },
-  'dormant-lists-60': {
-    title: 'Dormant Lists (60d+)',
-    subtitle: 'Lists with no task activity in 60+ days',
-    columns: [
-      { key: 'list', label: 'List' },
-      { key: 'space', label: 'Space' },
-      { key: 'tasks', label: 'Tasks', align: 'right' },
-      { key: 'lastActivity', label: 'Last activity', align: 'right' },
-    ],
-  },
-  'dormant-lists-90': {
-    title: 'Dormant Lists (90d+)',
-    subtitle: 'Lists with no task activity in 90+ days',
     columns: [
       { key: 'list', label: 'List' },
       { key: 'space', label: 'Space' },

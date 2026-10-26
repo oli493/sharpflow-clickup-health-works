@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "validate:scan": "vitest run scripts/validate-scan.test.ts"
+    "test": "vitest run"
   },
   "dependencies": {
     "@react-three/drei": "^9.114.0",
