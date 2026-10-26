@@ -29,6 +29,12 @@ export interface MapInput {
     failedLists: number
     signalsMeasured?: number
     signalsTotal?: number
+    requests?: number
+    retries?: number
+    rateLimited?: number
+    cacheHits?: number
+    avgLatencyMs?: number
+    rateLimitPerMinute?: number
   }
 }
 

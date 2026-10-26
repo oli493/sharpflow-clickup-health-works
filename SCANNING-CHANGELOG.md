@@ -58,5 +58,23 @@ Every change should be explainable by one of the fixes above.
 
 ### Not included
 
-- Speed/concurrency work.
 - Production environment, domain, key rotation or database migrations.
+
+## v1.2 — scan throughput (work in progress)
+
+Branch: `perf/scan-throughput`
+
+- Adaptive rate governor using ClickUp `X-RateLimit-*` headers
+- Task page windows (parallel pagination)
+- Parallel structure discovery and comment sampling
+- Prefetch of custom fields and first task pages
+- Retry on truncated/invalid JSON
+- Request/latency/rate-limit telemetry in `dataQuality`
+
+Measured on Eyes On: full 383/383 Lists, 81,340 tasks, 2,720 requests, 707 ms average latency,
+**8.4 minutes** (down from ~32–45 minutes uncached). No failed Lists.
+
+Validation: cached sequential (`CLICKUP_PAGE_WINDOW=1`) and parallel runs produced the same task
+count and score, confirming no tasks were dropped by parallel pagination.
+
+Still to do: List-level concurrency, target 3–6 minutes, full end-to-end test, then merge.

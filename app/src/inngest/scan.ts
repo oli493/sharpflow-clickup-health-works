@@ -21,6 +21,7 @@ import {
   type SpaceActivity,
   type SpaceWorkflow,
 } from '@/lib/scan/metrics'
+import { mapWithConcurrency } from '@/lib/scan/concurrency'
 
 const DAY = DAY_MS
 const STALE_DAYS = 90
@@ -30,7 +31,8 @@ const SAMPLE_ROWS = 100
 const COMMENT_SAMPLE = 60
 const MAX_LIST_PAGES_PER_STEP = 50
 const MAX_PAGES_PER_LIST = 400
-const SPACE_BATCH = 2
+const PAGE_WINDOW = Math.min(24, Math.max(1, Number(process.env.CLICKUP_PAGE_WINDOW ?? 16)))
+const SPACE_BATCH = 4
 
 const ROLE_LABEL: Record<number, string> = { 1: 'Owner', 2: 'Admin', 3: 'Member', 4: 'Guest' }
 
@@ -254,16 +256,20 @@ export const scanWorkspace = inngest.createFunction(
         let emptyFolders = 0
         let viewCount = 0
 
-        for (const space of spaceChunks[i]) {
-          for (const st of space.statuses) statuses.push({ name: st.status, type: st.type })
-          statusCounts.push(space.statuses.length)
+        const spaceParts = await mapWithConcurrency(spaceChunks[i], 2, async (space) => {
+          const spaceLists: ListRef[] = []
+          const spaceViewSamples: Record<string, string | number>[] = []
+          const spaceStatuses = space.statuses.map((status) => ({ name: status.status, type: status.type }))
+          let spaceFolderCount = 0
+          let spaceEmptyFolders = 0
+          let spaceViewCount = 0
 
           try {
             const { views } = await client.getViews(space.id)
-            viewCount += views?.length ?? 0
-            for (const v of views ?? []) {
-              if (viewSamples.length < SAMPLE_ROWS) {
-                viewSamples.push({ view: v.name, space: space.name, type: v.type })
+            spaceViewCount = views?.length ?? 0
+            for (const view of views ?? []) {
+              if (spaceViewSamples.length < SAMPLE_ROWS) {
+                spaceViewSamples.push({ view: view.name, space: space.name, type: view.type })
               }
             }
           } catch {
@@ -271,32 +277,64 @@ export const scanWorkspace = inngest.createFunction(
           }
 
           const { folders } = await client.getFolders(space.id)
-          for (const folder of folders) {
-            folderCount += 1
-            const { lists: folderLists } = await client.getLists(folder.id)
-            if (!folderLists || folderLists.length === 0) emptyFolders += 1
-            for (const l of folderLists ?? []) {
-              lists.push({
-                id: l.id,
-                name: l.name,
+          spaceFolderCount = folders.length
+          const folderLists = await mapWithConcurrency(folders, 4, async (folder) => {
+            try {
+              const { lists: listsInFolder } = await client.getLists(folder.id)
+              return listsInFolder ?? []
+            } catch {
+              return []
+            }
+          })
+
+          for (let folderIndex = 0; folderIndex < folders.length; folderIndex += 1) {
+            const listsInFolder = folderLists[folderIndex]
+            if (!listsInFolder.length) spaceEmptyFolders += 1
+            for (const list of listsInFolder) {
+              spaceLists.push({
+                id: list.id,
+                name: list.name,
                 spaceId: space.id,
                 spaceName: space.name,
-                taskCount: l.task_count,
-                createdAt: l.date_created ? Number(l.date_created) : undefined,
+                taskCount: list.task_count,
+                createdAt: list.date_created ? Number(list.date_created) : undefined,
               })
             }
           }
+
           const { lists: folderless } = await client.getFolderlessLists(space.id)
-          for (const l of folderless ?? []) {
-            lists.push({
-              id: l.id,
-              name: l.name,
+          for (const list of folderless ?? []) {
+            spaceLists.push({
+              id: list.id,
+              name: list.name,
               spaceId: space.id,
               spaceName: space.name,
-              taskCount: l.task_count,
-              createdAt: l.date_created ? Number(l.date_created) : undefined,
+              taskCount: list.task_count,
+              createdAt: list.date_created ? Number(list.date_created) : undefined,
             })
           }
+
+          return {
+            lists: spaceLists,
+            folderCount: spaceFolderCount,
+            emptyFolders: spaceEmptyFolders,
+            viewCount: spaceViewCount,
+            viewSamples: spaceViewSamples,
+            statuses: spaceStatuses,
+            statusCounts: [space.statuses.length],
+          }
+        })
+
+        for (const part of spaceParts) {
+          lists.push(...part.lists)
+          folderCount += part.folderCount
+          emptyFolders += part.emptyFolders
+          viewCount += part.viewCount
+          for (const view of part.viewSamples) {
+            if (viewSamples.length < SAMPLE_ROWS) viewSamples.push(view)
+          }
+          statuses.push(...part.statuses)
+          statusCounts.push(...part.statusCounts)
         }
 
         return { lists, folderCount, emptyFolders, viewCount, viewSamples, statuses, statusCounts }
@@ -436,17 +474,38 @@ export const scanWorkspace = inngest.createFunction(
         const sampleMissingOwner: Record<string, string | number>[] = []
 
         const batch = selectBatch(lists, start, MAX_LIST_PAGES_PER_STEP)
+        const fieldsByList = new Map<string, import('@/lib/clickup/types').ClickUpCustomField[]>()
+        const firstPageByList = new Map<
+          string,
+          {
+            tasks?: import('@/lib/clickup/types').ClickUpTask[]
+            last_page?: boolean
+            error?: unknown
+          }
+        >()
+
+        await mapWithConcurrency(batch, 12, async (list) => {
+          try {
+            const { fields } = await client.getCustomFields(list.id)
+            fieldsByList.set(list.id, fields ?? [])
+          } catch {
+            fieldsByList.set(list.id, [])
+          }
+          try {
+            const first = await client.getTasks(list.id, 0)
+            firstPageByList.set(list.id, first)
+          } catch (error) {
+            firstPageByList.set(list.id, { error })
+          }
+        })
+
         for (const list of batch) {
           try {
           let requiredFieldIds: string[] = []
-          try {
-            const { fields } = await client.getCustomFields(list.id)
-            requiredFieldIds = (fields ?? []).filter((field) => field.required).map((field) => field.id)
-            for (const field of fields ?? []) {
-              fieldDefs.push({ id: field.id, name: field.name, type: field.type, scope: list.name })
-            }
-          } catch {
-            /* Some Lists have no accessible fields. */
+          const fields = fieldsByList.get(list.id) ?? []
+          requiredFieldIds = fields.filter((field) => field.required).map((field) => field.id)
+          for (const field of fields) {
+            fieldDefs.push({ id: field.id, name: field.name, type: field.type, scope: list.name })
           }
 
           let countInList = 0
@@ -463,8 +522,43 @@ export const scanWorkspace = inngest.createFunction(
           const listSubtasks: { parentId: string; open: boolean }[] = []
 
           while (!lastPage) {
-            const { tasks, last_page } = await client.getTasks(list.id, page)
-            lastPage = Boolean(last_page) || tasks.length === 0
+            const prefetched = page === 0 ? firstPageByList.get(list.id) : undefined
+            if (prefetched?.error) throw prefetched.error
+            const first = prefetched?.tasks
+              ? { tasks: prefetched.tasks, last_page: prefetched.last_page }
+              : await client.getTasks(list.id, page)
+            const responses: {
+              page: number
+              tasks?: import('@/lib/clickup/types').ClickUpTask[]
+              last_page?: boolean
+              error?: unknown
+            }[] = [{ page, ...first }]
+
+            if (!first.last_page && first.tasks.length > 0 && page + 1 < MAX_PAGES_PER_LIST) {
+              const startPage = page + 1
+              const count = Math.min(PAGE_WINDOW, MAX_PAGES_PER_LIST - startPage)
+              const pages = Array.from({ length: count }, (_, index) => startPage + index)
+              const rest = await Promise.all(
+                pages.map(async (nextPage) => {
+                  try {
+                    const result = await client.getTasks(list.id, nextPage)
+                    return { page: nextPage, ...result }
+                  } catch (error) {
+                    return { page: nextPage, error }
+                  }
+                }),
+              )
+              responses.push(...rest)
+            }
+
+            responses.sort((a, b) => a.page - b.page)
+            for (const response of responses) {
+              if (response.error) {
+                if (lastPage) break
+                throw response.error
+              }
+              const tasks = response.tasks ?? []
+              const isLast = Boolean(response.last_page) || tasks.length === 0
             for (const task of tasks) {
             countInList += 1
             totalTasks += 1
@@ -600,10 +694,16 @@ export const scanWorkspace = inngest.createFunction(
             if (createdMs && now - createdMs <= STALE_DAYS * DAY) created90 += 1
             if (closedMs && now - closedMs <= STALE_DAYS * DAY) completed90 += 1
             }
-            page += 1
-            if (!lastPage && page >= MAX_PAGES_PER_LIST) {
-              truncatedList = true
+            page = response.page + 1
+            if (isLast) {
+              lastPage = true
               break
+            }
+            if (page >= MAX_PAGES_PER_LIST) {
+              truncatedList = true
+              lastPage = true
+              break
+            }
             }
           }
 
@@ -724,6 +824,7 @@ export const scanWorkspace = inngest.createFunction(
       )
     }
     const partial = failedLists.length > 0 || truncated
+    const clientStats = client.getStats()
     const subtasksUnderClosed = sum('subtasksUnderClosed')
     const subtasksTotal = sum('subtasksTotal')
     const created90 = sum('created90')
@@ -929,6 +1030,14 @@ export const scanWorkspace = inngest.createFunction(
         tasksExpected: Math.max(expectedTasks || totalTasks, totalTasks),
         truncated,
         failedLists: failedLists.length,
+        requests: clientStats.requests,
+        retries: clientStats.retries,
+        rateLimited: clientStats.rateLimited,
+        cacheHits: clientStats.cacheHits,
+        avgLatencyMs: clientStats.requests
+          ? Math.round(clientStats.totalLatencyMs / clientStats.requests)
+          : 0,
+        rateLimitPerMinute: clientStats.rateLimit.limit,
       },
     }
 
@@ -938,17 +1047,21 @@ export const scanWorkspace = inngest.createFunction(
       let totalComments30d = 0
       const commenters = new Set<number>()
       const cutoff = now - ACTIVE_DAYS * DAY
-      for (const tid of (scan.recentTaskIds as string[]).slice(0, COMMENT_SAMPLE)) {
+      const taskIds = (scan.recentTaskIds as string[]).slice(0, COMMENT_SAMPLE)
+      const commentPages = await mapWithConcurrency(taskIds, 6, async (taskId) => {
         try {
-          const { comments } = await client.getTaskComments(tid)
-          for (const comment of comments ?? []) {
-            const date = comment.date ? Number(comment.date) : null
-            if (date !== null && date < cutoff) continue
-            totalComments30d += 1
-            if (comment.user?.id) commenters.add(comment.user.id)
-          }
+          const { comments } = await client.getTaskComments(taskId)
+          return comments ?? []
         } catch {
-          /* Individual task comment reads can fail; sample continues. */
+          return []
+        }
+      })
+      for (const comments of commentPages) {
+        for (const comment of comments) {
+          const date = comment.date ? Number(comment.date) : null
+          if (date !== null && date < cutoff) continue
+          totalComments30d += 1
+          if (comment.user?.id) commenters.add(comment.user.id)
         }
       }
       return { totalComments30d, commenterIds: [...commenters] }
