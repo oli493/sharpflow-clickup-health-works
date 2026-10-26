@@ -10,6 +10,7 @@ export interface ClickUpSpace {
   id: string
   name: string
   archived?: boolean
+  date_created?: string
   statuses?: { status: string; type: string; orderindex: number }[]
 }
 
@@ -25,6 +26,7 @@ export interface ClickUpList {
   name: string
   archived?: boolean
   task_count?: number
+  date_created?: string
   folder?: { id: string; name: string }
   space?: { id: string; name: string }
 }
@@ -40,6 +42,11 @@ export interface ClickUpTask {
   assignees?: { id: number; username: string }[]
   creator?: { id: number; username: string }
   parent?: string | null
+  priority?: { id: string; priority: string } | null
+  time_estimate?: string | number
+  time_spent?: string | number
+  dependencies?: unknown[]
+  custom_fields?: { id: string; name: string; type: string; value: unknown; required?: boolean }[]
 }
 
 export interface ClickUpCustomField {
@@ -71,6 +78,15 @@ export interface ClickUpComment {
   comment_text?: string
   user?: { id: number; username?: string }
   date?: string
+}
+
+export interface ClickUpTimeEntry {
+  id: string
+  task?: { id: string }
+  user?: { id: number }
+  duration?: string | number
+  start?: string | number
+  end?: string | number
 }
 
 export interface ClickUpMember {
