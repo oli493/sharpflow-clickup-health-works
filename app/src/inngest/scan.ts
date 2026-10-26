@@ -13,9 +13,10 @@ const SAMPLE_LIST_LIMIT = 1000
 const SAMPLE_ROWS = 100
 const COMMENT_SAMPLE = 60
 // Work is split into small steps so no single serverless invocation approaches
-// the platform's function time limit (big workspaces exceed it otherwise).
-const LIST_BATCH = 25
-const SPACE_BATCH = 4
+// the platform's function time limit. One List per step keeps each step bounded
+// even when a workspace contains a very large list (e.g. 10k+ tasks).
+const LIST_BATCH = 1
+const SPACE_BATCH = 2
 
 const ROLE_LABEL: Record<number, string> = { 1: 'Owner', 2: 'Admin', 3: 'Member', 4: 'Guest' }
 
@@ -469,11 +470,15 @@ export const scanWorkspace = inngest.createFunction(
       })
       partials.push(part)
 
-      await progress(
-        `progress-scan-${i}`,
-        Math.min(54, 35 + Math.round(((i + 1) / listChunks.length) * 19)),
-        `Analysing tasks — ${Math.min((i + 1) * LIST_BATCH, structure.lists.length)}/${structure.lists.length} Lists`,
-      )
+      // Update progress periodically (not every list) to keep the step count tidy.
+      const isLastBatch = i === listChunks.length - 1
+      if (isLastBatch || (i + 1) % 10 === 0) {
+        await progress(
+          `progress-scan-${i}`,
+          Math.min(54, 35 + Math.round(((i + 1) / listChunks.length) * 19)),
+          `Analysing tasks — ${Math.min((i + 1) * LIST_BATCH, structure.lists.length)}/${structure.lists.length} Lists`,
+        )
+      }
     }
 
     // Merge the per-batch partials.

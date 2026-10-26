@@ -138,9 +138,10 @@ export class ClickUpClient {
     })
   }
 
-  /** Iterate all tasks for a list, following pagination. */
-  async *iterateTasks(listId: string): AsyncGenerator<ClickUpTask> {
-    for (let page = 0; page < 500; page += 1) {
+  /** Iterate tasks for a list, following pagination. `maxPages` bounds a single
+   * very large list (e.g. 10k+ tasks) so one step can't exceed the function timeout. */
+  async *iterateTasks(listId: string, maxPages = 40): AsyncGenerator<ClickUpTask> {
+    for (let page = 0; page < maxPages; page += 1) {
       const { tasks, last_page } = await this.getTasks(listId, page)
       for (const t of tasks) yield t
       if (last_page || tasks.length === 0) break
