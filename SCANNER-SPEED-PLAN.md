@@ -62,9 +62,17 @@ Memory-capped run (`NODE_OPTIONS=--max-old-space-size=2048`, 4 Lists x 4 pages, 
 A previous end-to-end run on the branch verified the report page, PDF (~444 KB) and all repaired
 drill-downs; the final memory-safe configuration will be live-tested after deploy/resync.
 
-## Remaining
+## Live validation
 
-- Merge correctness + speed
-- Wait for Vercel deploy
-- Resync Inngest (skip Override Input)
-- Run the live Eyes On smoke scan and delete the test scan
+After merge, Vercel deploy and Inngest resync:
+
+- Live Eyes On scan completed in **~10.5 minutes**
+- Score **75/100 (B)**, 16 findings
+- 382/382 Lists, **81,357 tasks**, 0 failed, 0 truncated
+- Peak heap **511 MB** on the 2 GB Vercel plan
+- Report page, PDF (~444 KB) and all repaired drill-downs verified
+- Test scan, 16 findings, 382 list_stats and 12 sample datasets deleted afterward
+
+## Status
+
+Merged and live on `main`. No further action required for this release.

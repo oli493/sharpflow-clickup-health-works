@@ -81,5 +81,6 @@ Final memory-capped run on Eyes On (`--max-old-space-size=2048`, 4 Lists x 4 pag
 The earlier 6.9-minute version used 4 Lists x 16 pages and OOMed on Vercel at 2 GB.
 The memory-safe version stays well under 2 GB.
 
-A previous end-to-end run verified the report page, PDF and all repaired drill-downs; the final
-configuration will be live-tested after deploy/resync.
+Live validation after merge and Inngest resync: **~10.5 minutes**, score **75/100 (B)**,
+382/382 Lists, 81,357 tasks, peak heap **511 MB** on 2 GB, 0 failed, 0 truncated.
+Report, PDF and all repaired drill-downs verified; the test scan and child rows were deleted.
