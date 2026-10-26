@@ -72,6 +72,7 @@ export interface ListScanPart {
   memberActivity: [number, number][]
   truncated: boolean
   failedLists: { listId: string; listName: string; error: string }[]
+  heapPeakBytes: number
 }
 
 export interface ScanListOptions {
@@ -120,6 +121,7 @@ function emptyPart(list: TaskListRef, error: unknown, expectedTasks: number): Li
     activeMemberIds: [],
     memberActivity: [],
     truncated: false,
+    heapPeakBytes: 0,
     failedLists: [
       {
         listId: list.id,
@@ -137,7 +139,7 @@ export async function scanList(
   options: ScanListOptions = {},
 ): Promise<ListScanPart> {
   try {
-    const pageWindow = Math.min(24, Math.max(1, options.pageWindow ?? 16))
+    const pageWindow = Math.min(24, Math.max(1, options.pageWindow ?? 4))
     const maxPages = Math.max(1, options.maxPages ?? 400)
     let fields = options.fields
     if (!fields) {
@@ -188,6 +190,7 @@ export async function scanList(
     let page = 0
     let lastPage = false
     let truncated = false
+    let heapPeakBytes = process.memoryUsage().heapUsed
 
     const usedStatus = new Set<string>()
     const usedStatusBySpace: Record<string, Record<string, number>> = {}
@@ -236,6 +239,7 @@ export async function scanList(
         responses.push(...rest)
       }
 
+      heapPeakBytes = Math.max(heapPeakBytes, process.memoryUsage().heapUsed)
       responses.sort((a, b) => a.page - b.page)
       for (const response of responses) {
         if (response.error) {
@@ -469,6 +473,7 @@ export async function scanList(
       memberActivity: [...memberActivity.entries()],
       truncated,
       failedLists: [],
+      heapPeakBytes,
     }
   } catch (error) {
     return emptyPart(list, error, list.taskCount ?? 0)

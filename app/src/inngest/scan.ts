@@ -32,7 +32,7 @@ const SAMPLE_ROWS = 100
 const COMMENT_SAMPLE = 60
 const MAX_LIST_PAGES_PER_STEP = 50
 const MAX_PAGES_PER_LIST = 400
-const PAGE_WINDOW = Math.min(24, Math.max(1, Number(process.env.CLICKUP_PAGE_WINDOW ?? 16)))
+const PAGE_WINDOW = Math.min(8, Math.max(1, Number(process.env.CLICKUP_PAGE_WINDOW ?? 4)))
 const SPACE_BATCH = 4
 
 const ROLE_LABEL: Record<number, string> = { 1: 'Owner', 2: 'Admin', 3: 'Member', 4: 'Guest' }
@@ -477,7 +477,7 @@ export const scanWorkspace = inngest.createFunction(
         const batch = selectBatch(lists, start, MAX_LIST_PAGES_PER_STEP)
         const listParts = await mapWithConcurrency(
           batch,
-          Math.min(6, Math.max(1, Number(process.env.CLICKUP_LIST_CONCURRENCY ?? 4))),
+          Math.min(4, Math.max(1, Number(process.env.CLICKUP_LIST_CONCURRENCY ?? 4))),
           (list) =>
             scanList(client, list, now, {
               pageWindow: PAGE_WINDOW,
@@ -530,6 +530,10 @@ export const scanWorkspace = inngest.createFunction(
     }
     const partial = failedLists.length > 0 || truncated
     const clientStats = client.getStats()
+    const peakHeapBytes = partials.reduce(
+      (max, part) => Math.max(max, Number(part.heapPeakBytes ?? 0)),
+      0,
+    )
     const subtasksUnderClosed = sum('subtasksUnderClosed')
     const subtasksTotal = sum('subtasksTotal')
     const created90 = sum('created90')
@@ -743,6 +747,7 @@ export const scanWorkspace = inngest.createFunction(
           ? Math.round(clientStats.totalLatencyMs / clientStats.requests)
           : 0,
         rateLimitPerMinute: clientStats.rateLimit.limit,
+        peakHeapBytes,
       },
     }
 
