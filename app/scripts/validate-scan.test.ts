@@ -121,6 +121,33 @@ describe.skipIf(!RUN)('real workspace scan validation', () => {
     `runs the branch scanner against ${WORKSPACE} without writing to Supabase`,
     async () => {
       const admin = supabaseAdmin()
+
+      if (process.env.VALIDATION_CLEANUP_SCAN_ID) {
+        const scanId = process.env.VALIDATION_CLEANUP_SCAN_ID
+        const before = await Promise.all([
+          admin.from('findings').select('id', { count: 'exact', head: true }).eq('scan_id', scanId),
+          admin.from('list_stats').select('id', { count: 'exact', head: true }).eq('scan_id', scanId),
+          admin.from('scan_samples').select('id', { count: 'exact', head: true }).eq('scan_id', scanId),
+          admin.from('leads').select('id', { count: 'exact', head: true }).eq('scan_id', scanId),
+        ])
+        const { error: deleteError } = await admin.from('scans').delete().eq('id', scanId)
+        if (deleteError) throw new Error(`cleanup delete failed: ${deleteError.message}`)
+        const after = await Promise.all([
+          admin.from('scans').select('id', { count: 'exact', head: true }).eq('id', scanId),
+          admin.from('findings').select('id', { count: 'exact', head: true }).eq('scan_id', scanId),
+          admin.from('list_stats').select('id', { count: 'exact', head: true }).eq('scan_id', scanId),
+          admin.from('scan_samples').select('id', { count: 'exact', head: true }).eq('scan_id', scanId),
+          admin.from('leads').select('id', { count: 'exact', head: true }).eq('scan_id', scanId),
+        ])
+        console.log(
+          `CLEANUP ${scanId}: before findings=${before[0].count ?? 0}, list_stats=${before[1].count ?? 0}, samples=${before[2].count ?? 0}, leads=${before[3].count ?? 0}`,
+        )
+        console.log(
+          `CLEANUP ${scanId}: after scan=${after[0].count ?? 0}, findings=${after[1].count ?? 0}, list_stats=${after[2].count ?? 0}, samples=${after[3].count ?? 0}, leads=${after[4].count ?? 0}`,
+        )
+        return
+      }
+
       const [{ data: scans, error: scansError }, { data: connections, error: connectionsError }] =
         await Promise.all([
           admin

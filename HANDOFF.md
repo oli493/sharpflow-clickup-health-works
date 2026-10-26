@@ -591,5 +591,20 @@ This branch corrects the data layer without changing the agreed scoring model.
   stale tiers and dormant-list tiers; corrected labels and sample-row wording.
 - **Partial scans:** material missing data fails the scan instead of publishing a misleading score.
 
-Validation: `npm run typecheck`, `npm test` (40 tests), `npm run build`.
+Validation: `npm run typecheck`, `npm test` (56 tests + 1 opt-in validation test), `npm run build`.
+
+Real-workspace validation on **Eyes On** (383 Lists, 81,346 tasks):
+- baseline **76 (B)** -> branch **75 (B)**
+- full coverage: 383/383 Lists, 0 failures, 31/32 signals
+- Architecture 87 -> 88 (dormant fix)
+- Reporting 48 -> 45 (open-task due-date coverage is genuinely lower than the
+  old all-task number)
+- Workflow restored to 100 after reporting the worst workflow instead of
+  summing unused statuses
+- tasks scanned rose from ~55,947 (old 4,000/List cap) to 81,346 (full)
+- full end-to-end worker test verified the report, PDF and all repaired
+  drill-downs; the test scan and child rows were deleted afterwards
+- cached validation runs complete in ~2 minutes via the opt-in
+  `CLICKUP_CACHE_DIR`; the cache is never enabled in production
+
 No production env, domain, key or database changes are required.

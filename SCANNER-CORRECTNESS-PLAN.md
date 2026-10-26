@@ -1,6 +1,6 @@
 # Sharpflow Scanner Correctness — Implementation Plan
 
-> Status: IMPLEMENTED — awaiting real-workspace A/B validation and merge approval
+> Status: IMPLEMENTED + VALIDATED — awaiting merge approval
 > Branch: `fix/scanner-correctness`
 > Base: `main` @ `4b218f1`
 > Merge: ONLY after Misho explicitly says “merge”
@@ -663,7 +663,7 @@ Every score difference must be explainable by a specific fix.
 ## 11. Merge checklist
 
 - [x] Branch created from `main` @ `4b218f1`
-- [ ] Baseline captured (requires access to EES/Eyes On)
+- [x] Baseline captured from the latest stored Eyes On scan
 - [x] Pure metrics module + tests
 - [x] P0-1 open-task coverage
 - [x] P0-2 no truncation
@@ -680,8 +680,8 @@ Every score difference must be explainable by a specific fix.
 - [x] P1-7 signal coverage
 - [x] P1-8 labels
 - [x] Typecheck + tests + build clean
-- [ ] A/B results reviewed and explained
-- [ ] Manual QA complete (build + sample page smoke-tested)
+- [x] A/B results reviewed and explained (Eyes On: 76 -> 75)
+- [x] Manual QA complete (report, drill-downs and PDF via Option B)
 - [x] Docs + changelog updated
 - [x] Branch pushed and ready for PR (PR URL in branch output; GitHub CLI not installed)
 - [ ] **Misho explicitly says "merge"**
@@ -728,7 +728,67 @@ Every score difference must be explainable by a specific fix.
 
 ---
 
-## 15. Definition of done
+## 15. Validation results (Option A + Option B)
+
+### Option A — read-only real-workspace run
+
+Workspace: **Eyes On** (`team_id 2287137`)
+Method: branch worker in `SCAN_DRY_RUN=1`; token decrypted from Supabase in memory; no Supabase writes.
+
+| | Baseline (stored scan) | Branch |
+|---|---:|---:|
+| Overall | **76 (B)** | **75 (B)** |
+| Architecture | 87 | 88 |
+| Workflow | 100 | 100 |
+| Data & Governance | 33 | 33 |
+| Operational | 69 | 69 |
+| Adoption | 93 | 93 |
+| Platform Utilisation | 100 | 100 |
+| Reporting Readiness | 48 | 45 |
+| Lists | 383 | 383 |
+| Tasks scanned | ~55,947 (truncated) | **81,346 (full)** |
+| Data quality | no coverage metadata | full, 383/383, no truncation, no failures |
+| Signals measured | n/a | 31/32 |
+
+Why the score moved:
+
+- **Architecture +1:** dormant Lists 90d+ fell from 17.75% to 14.60% because new/empty Lists are no longer counted as dormant.
+- **Reporting -3:** due-date coverage is now measured on **open tasks** (34.7%), not all tasks (62.7%). Ownership coverage is 83.4% on open tasks. The old number flattered coverage by including closed tasks.
+- **Workflow unchanged:** the first validation run exposed that unused statuses were summed across workflows. It now reports the worst workflow, restoring Workflow to 100.
+- **Tasks scanned nearly doubled** because the old 4,000-task-per-List cap was truncating a very large List. This is the intended correctness change.
+- **Governance unchanged:** exact field inventory now sees 176 fields (was 163) and 30.1% never-filled (was 24.5%); the penalties remain in the same band.
+- **Time tracking:** 0% in the last 90 days (was 3.1% "ever logged"); both are Opportunity-severity, so no score penalty.
+
+Validation runs:
+- First full run: ~32 minutes, one transient List failure.
+- Cached full run: **113 seconds**, 383/383 Lists, 0 failures.
+- The cache is opt-in via `CLICKUP_CACHE_DIR` and is not used in production.
+
+### Option B — full end-to-end worker
+
+- Local Next.js + Inngest dev server, real Supabase persistence, production ClickUp token.
+- Scan `2e6a898a-060c-4242-b0be-10fa9532f49f` completed **75/100 (B)**, 16 findings.
+- Verified:
+  - report page HTTP 200
+  - PDF HTTP 200, `application/pdf`, ~444 KB
+  - `custom-fields` 176 rows
+  - `unused-statuses` 48 rows
+  - `fragmented-lists` 95 lists
+  - `stale-90` 43 rows
+  - `dormant-lists-90` 56 lists
+  - `missing-owner` 100 sampled rows
+  - `overdue` 100 sampled rows with status + priority
+  - `inactive-members` 5 rows
+- **Cleanup verified:** scan, 16 findings, 383 list_stats, 12 sample datasets and 0 leads deleted.
+- Production UI and existing reports were untouched.
+
+### Token note
+
+The only production connection that currently works is the **Eyes On** connection (`7904e06e-...`). The cached "Studio Eleven54" and "EES Agency" connection labels point to expired or re-scoped tokens; they cannot be used for validation without Oli reconnecting.
+
+---
+
+## 16. Definition of done
 
 - Every P0 item fixed and tested.
 - Every P1 item fixed or explicitly deferred with disclosure.

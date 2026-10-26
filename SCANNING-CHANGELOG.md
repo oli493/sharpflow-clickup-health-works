@@ -39,9 +39,22 @@ Every change should be explainable by one of the fixes above.
 ### Validation
 
 - `npm run typecheck`
-- `npm test` — 40 tests
+- `npm test` — 56 passing, 1 validation test skipped by default
 - `npm run build`
-- Manual review on a real workspace before merge.
+- Real-workspace run on **Eyes On** (383 Lists, 81,346 tasks):
+  - baseline **76 (B)** → branch **75 (B)**
+  - full coverage, 383/383 Lists, 0 failures, 31/32 signals
+  - Architecture 87 → 88 (dormant fix)
+  - Reporting 48 → 45 (open-task due-date coverage is genuinely lower than
+    the old all-task number)
+  - Workflow restored to 100 after reporting the worst workflow instead of
+    summing unused statuses across workflows
+  - tasks scanned rose from ~55,947 (old 4,000/List cap) to 81,346 (full)
+- Full end-to-end worker test on the same workspace:
+  - report page, PDF, and all repaired drill-downs verified
+  - test scan and child rows deleted afterwards
+- Cached validation runs complete in ~2 minutes via the opt-in
+  `CLICKUP_CACHE_DIR`; the cache is never enabled in production.
 
 ### Not included
 
