@@ -60,21 +60,25 @@ Every change should be explainable by one of the fixes above.
 
 - Production environment, domain, key rotation or database migrations.
 
-## v1.2 Ã¢â‚¬â€ scan throughput (work in progress)
+## v1.2 - scan throughput
 
 Branch: `perf/scan-throughput`
 
 - Adaptive rate governor using ClickUp `X-RateLimit-*` headers
 - Task page windows (parallel pagination)
+- Per-List scanning moved to `lib/scan/tasks.ts`
+- Four Lists processed concurrently, with 16-page windows inside each List
 - Parallel structure discovery and comment sampling
-- Prefetch of custom fields and first task pages
 - Retry on truncated/invalid JSON
-- Request/latency/rate-limit telemetry in `dataQuality`
+- Request/latency telemetry in dry-run validation
 
-Measured on Eyes On: full 383/383 Lists, 81,340 tasks, 2,720 requests, 707 ms average latency,
-**8.4 minutes** (down from ~32Ã¢â‚¬â€œ45 minutes uncached). No failed Lists.
+Measured on Eyes On: full 383/383 Lists, 81,340 tasks, 2,720 requests, 717 ms average latency,
+**6.9 minutes** (down from ~32-45 minutes uncached). No failed Lists.
 
-Validation: cached sequential (`CLICKUP_PAGE_WINDOW=1`) and parallel runs produced the same task
-count and score, confirming no tasks were dropped by parallel pagination.
+A cached sequential run (`CLICKUP_PAGE_WINDOW=1`) produced the same task count and score,
+confirming parallel pagination does not drop or duplicate tasks.
 
-Still to do: List-level concurrency, target 3Ã¢â‚¬â€œ6 minutes, full end-to-end test, then merge.
+End-to-end test on the branch: report page, PDF (~444 KB) and all repaired drill-downs verified;
+the test scan and child rows were deleted afterward.
+
+Ready to merge correctness + speed.
