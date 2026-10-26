@@ -22,6 +22,7 @@ import {
   type SpaceWorkflow,
 } from '@/lib/scan/metrics'
 import { mapWithConcurrency } from '@/lib/scan/concurrency'
+import { scanList } from '@/lib/scan/tasks'
 
 const DAY = DAY_MS
 const STALE_DAYS = 90
@@ -145,7 +146,7 @@ export const scanWorkspace = inngest.createFunction(
   {
     id: 'scan-workspace',
     // Persist a failed status so the UI can explain what happened instead of
-    // spinning forever — without this the scan row stays "running" on error.
+    // spinning forever â€” without this the scan row stays "running" on error.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onFailure: async ({ event }: any) => {
       if (process.env.SCAN_DRY_RUN === '1') return
@@ -344,7 +345,7 @@ export const scanWorkspace = inngest.createFunction(
       await progress(
         `progress-structure-${i}`,
         Math.min(34, 15 + Math.round(((i + 1) / spaceChunks.length) * 19)),
-        `Mapping workspace structure — ${Math.min((i + 1) * SPACE_BATCH, head.spaces.length)}/${head.spaces.length} Spaces`,
+        `Mapping workspace structure â€” ${Math.min((i + 1) * SPACE_BATCH, head.spaces.length)}/${head.spaces.length} Spaces`,
       )
     }
 
@@ -474,314 +475,18 @@ export const scanWorkspace = inngest.createFunction(
         const sampleMissingOwner: Record<string, string | number>[] = []
 
         const batch = selectBatch(lists, start, MAX_LIST_PAGES_PER_STEP)
-        const fieldsByList = new Map<string, import('@/lib/clickup/types').ClickUpCustomField[]>()
-        const firstPageByList = new Map<
-          string,
-          {
-            tasks?: import('@/lib/clickup/types').ClickUpTask[]
-            last_page?: boolean
-            error?: unknown
-          }
-        >()
-
-        await mapWithConcurrency(batch, 12, async (list) => {
-          try {
-            const { fields } = await client.getCustomFields(list.id)
-            fieldsByList.set(list.id, fields ?? [])
-          } catch {
-            fieldsByList.set(list.id, [])
-          }
-          try {
-            const first = await client.getTasks(list.id, 0)
-            firstPageByList.set(list.id, first)
-          } catch (error) {
-            firstPageByList.set(list.id, { error })
-          }
-        })
-
-        for (const list of batch) {
-          try {
-          let requiredFieldIds: string[] = []
-          const fields = fieldsByList.get(list.id) ?? []
-          requiredFieldIds = fields.filter((field) => field.required).map((field) => field.id)
-          for (const field of fields) {
-            fieldDefs.push({ id: field.id, name: field.name, type: field.type, scope: list.name })
-          }
-
-          let countInList = 0
-          let openInList = 0
-          let overdueInList = 0
-          let staleInList = 0
-          let lastActivity = 0
-          let page = 0
-          let lastPage = false
-          let truncatedList = false
-          // Subtasks always live in the same List as their parent in ClickUp, so
-          // parent "closed" state can be resolved per List (keeps steps small).
-          const listClosed = new Map<string, boolean>()
-          const listSubtasks: { parentId: string; open: boolean }[] = []
-
-          while (!lastPage) {
-            const prefetched = page === 0 ? firstPageByList.get(list.id) : undefined
-            if (prefetched?.error) throw prefetched.error
-            const first = prefetched?.tasks
-              ? { tasks: prefetched.tasks, last_page: prefetched.last_page }
-              : await client.getTasks(list.id, page)
-            const responses: {
-              page: number
-              tasks?: import('@/lib/clickup/types').ClickUpTask[]
-              last_page?: boolean
-              error?: unknown
-            }[] = [{ page, ...first }]
-
-            if (!first.last_page && first.tasks.length > 0 && page + 1 < MAX_PAGES_PER_LIST) {
-              const startPage = page + 1
-              const count = Math.min(PAGE_WINDOW, MAX_PAGES_PER_LIST - startPage)
-              const pages = Array.from({ length: count }, (_, index) => startPage + index)
-              const rest = await Promise.all(
-                pages.map(async (nextPage) => {
-                  try {
-                    const result = await client.getTasks(list.id, nextPage)
-                    return { page: nextPage, ...result }
-                  } catch (error) {
-                    return { page: nextPage, error }
-                  }
-                }),
-              )
-              responses.push(...rest)
-            }
-
-            responses.sort((a, b) => a.page - b.page)
-            for (const response of responses) {
-              if (response.error) {
-                if (lastPage) break
-                throw response.error
-              }
-              const tasks = response.tasks ?? []
-              const isLast = Boolean(response.last_page) || tasks.length === 0
-            for (const task of tasks) {
-            countInList += 1
-            totalTasks += 1
-            const closedType = task.status?.type === 'closed' || task.status?.type === 'done'
-            const dueMs = task.due_date ? Number(task.due_date) : null
-            const updatedMs = task.date_updated ? Number(task.date_updated) : null
-            const createdMs = task.date_created ? Number(task.date_created) : null
-            const closedMs = task.date_closed ? Number(task.date_closed) : null
-            if (updatedMs && updatedMs > lastActivity) lastActivity = updatedMs
-            const statusName = task.status?.status ?? ''
-            usedStatus.add(statusName)
-            const spaceUsage = usedStatusBySpace[list.spaceId] ?? {}
-            spaceUsage[statusName] = (spaceUsage[statusName] ?? 0) + 1
-            usedStatusBySpace[list.spaceId] = spaceUsage
-            const recentlyActive =
-              (createdMs !== null && now - createdMs <= ACTIVE_DAYS * DAY) ||
-              (updatedMs !== null && now - updatedMs <= ACTIVE_DAYS * DAY)
-            if (recentlyActive) recentBySpace[list.spaceId] = (recentBySpace[list.spaceId] ?? 0) + 1
-            listClosed.set(task.id, closedType)
-
-            const cfs = (task as { custom_fields?: { id: string; value: unknown }[] }).custom_fields
-            if (cfs) {
-              for (const cf of cfs) {
-                const st = fieldStats.get(cf.id) ?? { filled: 0, slots: 0 }
-                st.slots += 1
-                cfSlots += 1
-                const v = cf.value
-                const empty = v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0)
-                if (!empty) {
-                  st.filled += 1
-                  cfFilled += 1
-                }
-                fieldStats.set(cf.id, st)
-              }
-            }
-
-            if (requiredFieldIds.length) {
-              const cfMap = new Map((cfs ?? []).map((cf) => [cf.id, cf.value]))
-              for (const fid of requiredFieldIds) {
-                requiredSlots += 1
-                const v = cfMap.get(fid)
-                const empty = v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0)
-                if (empty) requiredMissing += 1
-              }
-            }
-
-            if (task.creator?.id && createdMs && now - createdMs <= ACTIVE_DAYS * DAY) {
-              activeMembers.add(task.creator.id)
-              bump(task.creator.id, createdMs)
-            }
-            const touchedRecently =
-              (closedMs !== null && now - closedMs <= ACTIVE_DAYS * DAY) ||
-              (updatedMs !== null && now - updatedMs <= ACTIVE_DAYS * DAY)
-            if (touchedRecently) {
-              for (const a of task.assignees ?? []) {
-                activeMembers.add(a.id)
-                bump(a.id, updatedMs ?? closedMs ?? now)
-              }
-            }
-            if (updatedMs && now - updatedMs <= ACTIVE_DAYS * DAY && recentTaskIds.length < COMMENT_SAMPLE) {
-              recentTaskIds.push(task.id)
-            }
-
-            if (task.parent) {
-              subtasksTotal += 1
-              listSubtasks.push({ parentId: task.parent, open: !closedType })
-            }
-            if (!closedType) {
-              openTasks += 1
-              openInList += 1
-              if (!dueMs) openNoDue += 1
-              if (!task.assignees || task.assignees.length === 0) openNoAssignee += 1
-              if (task.time_estimate) openWithEstimate += 1
-              if (dueMs && dueMs < now) {
-                overdue += 1
-                overdueInList += 1
-                if (sampleOverdue.length < SAMPLE_ROWS) {
-                  sampleOverdue.push({
-                    task: task.name,
-                    assignee: task.assignees?.[0]?.username ?? '— none —',
-                    space: list.spaceName,
-                    due: `-${Math.round((now - dueMs) / DAY)}d`,
-                    status: task.status?.status ?? '—',
-                    priority: task.priority?.priority ?? '—',
-                  })
-                }
-              }
-              if (updatedMs) {
-                const age = now - updatedMs
-                if (age >= STALE_DAYS * DAY) stale90 += 1
-                else if (age >= 60 * DAY) stale60 += 1
-                else if (age >= 30 * DAY) stale30 += 1
-                if (age >= 30 * DAY) {
-                  staleInList += 1
-                  if (sampleStale.length < SAMPLE_ROWS) {
-                    sampleStale.push({
-                      task: task.name,
-                      owner: task.assignees?.[0]?.username ?? '— none —',
-                      space: list.spaceName,
-                      lastUpdate: `${Math.round(age / DAY)}d ago`,
-                      ageDays: Math.round(age / DAY),
-                      status: task.status?.status ?? '—',
-                    })
-                  }
-                }
-              }
-            }
-            if (!dueMs) {
-              noDue += 1
-              if (!closedType && sampleMissingDue.length < SAMPLE_ROWS) {
-                sampleMissingDue.push({
-                  task: task.name,
-                  assignee: task.assignees?.[0]?.username ?? '— none —',
-                  space: list.spaceName,
-                  created: createdMs ? `${Math.round((now - createdMs) / DAY)}d ago` : '—',
-                })
-              }
-            }
-            if (!task.assignees || task.assignees.length === 0) {
-              noAssignee += 1
-              if (!closedType && sampleMissingOwner.length < SAMPLE_ROWS) {
-                sampleMissingOwner.push({
-                  task: task.name,
-                  space: list.spaceName,
-                  created: createdMs ? `${Math.round((now - createdMs) / DAY)}d ago` : '—',
-                  status: task.status?.status ?? '—',
-                })
-              }
-            }
-            if (task.time_estimate) withEstimate += 1
-            if (task.time_spent && Number(task.time_spent) > 0) withTime += 1
-            if (task.dependencies && task.dependencies.length > 0) withDependency += 1
-            if (createdMs && now - createdMs <= STALE_DAYS * DAY) created90 += 1
-            if (closedMs && now - closedMs <= STALE_DAYS * DAY) completed90 += 1
-            }
-            page = response.page + 1
-            if (isLast) {
-              lastPage = true
-              break
-            }
-            if (page >= MAX_PAGES_PER_LIST) {
-              truncatedList = true
-              lastPage = true
-              break
-            }
-            }
-          }
-
-          for (const s of listSubtasks) {
-            if (s.open && listClosed.get(s.parentId) === true) subtasksUnderClosed += 1
-          }
-
-          perList.push({
-            list_id: list.id,
-            list_name: list.name,
-            space_id: list.spaceId,
-            space_name: list.spaceName,
-            tasks: countInList,
-            open_tasks: openInList,
-            overdue: overdueInList,
-            stale: staleInList,
-            last_activity: lastActivity,
-            created_at: list.createdAt ?? 0,
-            pages_scanned: page,
-            expected_tasks: list.taskCount ?? countInList,
-            truncated: truncatedList,
-          })
-
-          expectedTasks += list.taskCount ?? countInList
-          if (truncatedList) stepTruncated = true
-          } catch (error) {
-            expectedTasks += list.taskCount ?? 0
-            stepFailedLists.push({
-              listId: list.id,
-              listName: list.name,
-              error: (error as Error)?.message?.slice(0, 200) ?? 'list_read_failed',
-            })
-          }
-        }
-
-        return {
-          totalTasks,
-          openTasks,
-          overdue,
-          stale30,
-          stale60,
-          stale90,
-          noDue,
-          noAssignee,
-          withEstimate,
-          openNoDue,
-          openNoAssignee,
-          openWithEstimate,
-          withTime,
-          withDependency,
-          expectedTasks,
-          subtasksUnderClosed,
-          subtasksTotal,
-          created90,
-          completed90,
-          requiredSlots,
-          requiredMissing,
-          cfSlots,
-          cfFilled,
-          usedStatus: [...usedStatus],
-          usedStatusBySpace,
-          recentBySpace,
-          fieldStats: [...fieldStats.entries()],
-          fieldDefs,
-          perList,
-          sampleOverdue,
-          sampleStale,
-          sampleMissingDue,
-          sampleMissingOwner,
-          recentTaskIds,
-          activeMemberIds: [...activeMembers],
-          memberActivity: [...memberActivity.entries()],
-          truncated: stepTruncated,
-          failedLists: stepFailedLists,
-          nextIndex: start + batch.length,
-        }
+        const listParts = await mapWithConcurrency(
+          batch,
+          Math.min(6, Math.max(1, Number(process.env.CLICKUP_LIST_CONCURRENCY ?? 4))),
+          (list) =>
+            scanList(client, list, now, {
+              pageWindow: PAGE_WINDOW,
+              maxPages: MAX_PAGES_PER_LIST,
+            }),
+        )
+        return { listParts, nextIndex: start + batch.length }
       })
-      partials.push(part)
+      partials.push(...(part.listParts as unknown[]))
       idx = (part.nextIndex as number) ?? lists.length
       stepNo += 1
 
@@ -789,7 +494,7 @@ export const scanWorkspace = inngest.createFunction(
         await progress(
           `progress-scan-${stepNo}`,
           Math.min(54, 35 + Math.round((idx / lists.length) * 19)),
-          `Analysing tasks — ${Math.min(idx, lists.length)}/${lists.length} Lists`,
+          `Analysing tasks â€” ${Math.min(idx, lists.length)}/${lists.length} Lists`,
         )
       }
     }
@@ -996,7 +701,7 @@ export const scanWorkspace = inngest.createFunction(
             tasks: list.tasks,
             lastActivity: list.last_activity
               ? new Date(list.last_activity).toLocaleDateString('en-GB')
-              : '— none —',
+              : 'â€” none â€”',
             tier,
           }]
         }),
@@ -1015,7 +720,7 @@ export const scanWorkspace = inngest.createFunction(
             tasks: list.tasks,
             lastActivity: list.last_activity
               ? new Date(list.last_activity).toLocaleDateString('en-GB')
-              : '—',
+              : 'â€”',
           })),
       },
       recentTaskIds,
@@ -1127,7 +832,7 @@ export const scanWorkspace = inngest.createFunction(
           tasks: space.tasks,
           lastActivity: space.lastActivity
             ? new Date(space.lastActivity).toLocaleDateString('en-GB')
-            : '—',
+            : 'â€”',
         }
       })
 
@@ -1139,7 +844,7 @@ export const scanWorkspace = inngest.createFunction(
         role: ROLE_LABEL[m.role] ?? String(m.role),
         lastActivity: memberActivityMap.has(m.id)
           ? `${Math.round((now - (memberActivityMap.get(m.id) ?? now)) / DAY)}d ago`
-          : '— none in 30d',
+          : 'â€” none in 30d',
       }))
 
     const metrics2: Metrics = {
@@ -1204,7 +909,7 @@ export const scanWorkspace = inngest.createFunction(
       'duplicate-statuses': structure.duplicateStatusList,
     }
 
-    // AI executive summary — explains the engine; falls back to templated text on failure.
+    // AI executive summary â€” explains the engine; falls back to templated text on failure.
     const finalReport = dryRun
       ? report
       : await step.run('ai-summary', async () => {

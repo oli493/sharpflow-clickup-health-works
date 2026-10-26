@@ -1,6 +1,6 @@
 # Scanning changelog
 
-## v1.1 — scanner correctness
+## v1.1 â€” scanner correctness
 
 Branch: `fix/scanner-correctness`
 
@@ -14,10 +14,10 @@ Corrects the data collection layer without changing the agreed scoring model.
 - New/empty Lists and Spaces are no longer counted as dormant 90d+.
 - Distinct workflows are counted from unique status signatures, not Space count.
 - Unused statuses and statuses-per-workflow are calculated per workflow.
-- Custom-field bloat and “0% filled” include configured fields that never appear on a task.
+- Custom-field bloat and â€œ0% filledâ€ include configured fields that never appear on a task.
 - Comment frequency is sampled across Lists and filtered to the last 30 days.
 - Activity concentration uses recent activity, not historical task volume.
-- Time tracking uses workspace time entries for the last 90 days; falls back to “any time logged”
+- Time tracking uses workspace time entries for the last 90 days; falls back to â€œany time loggedâ€
   with an explicit label.
 - Partial failures are recorded. Material missing data fails the scan instead of publishing a
   misleading score.
@@ -39,13 +39,13 @@ Every change should be explainable by one of the fixes above.
 ### Validation
 
 - `npm run typecheck`
-- `npm test` — 56 passing, 1 validation test skipped by default
+- `npm test` â€” 56 passing, 1 validation test skipped by default
 - `npm run build`
 - Real-workspace run on **Eyes On** (383 Lists, 81,346 tasks):
-  - baseline **76 (B)** → branch **75 (B)**
+  - baseline **76 (B)** â†’ branch **75 (B)**
   - full coverage, 383/383 Lists, 0 failures, 31/32 signals
-  - Architecture 87 → 88 (dormant fix)
-  - Reporting 48 → 45 (open-task due-date coverage is genuinely lower than
+  - Architecture 87 â†’ 88 (dormant fix)
+  - Reporting 48 â†’ 45 (open-task due-date coverage is genuinely lower than
     the old all-task number)
   - Workflow restored to 100 after reporting the worst workflow instead of
     summing unused statuses across workflows
@@ -60,7 +60,7 @@ Every change should be explainable by one of the fixes above.
 
 - Production environment, domain, key rotation or database migrations.
 
-## v1.2 — scan throughput (work in progress)
+## v1.2 â€” scan throughput (work in progress)
 
 Branch: `perf/scan-throughput`
 
@@ -72,9 +72,9 @@ Branch: `perf/scan-throughput`
 - Request/latency/rate-limit telemetry in `dataQuality`
 
 Measured on Eyes On: full 383/383 Lists, 81,340 tasks, 2,720 requests, 707 ms average latency,
-**8.4 minutes** (down from ~32–45 minutes uncached). No failed Lists.
+**8.4 minutes** (down from ~32â€“45 minutes uncached). No failed Lists.
 
 Validation: cached sequential (`CLICKUP_PAGE_WINDOW=1`) and parallel runs produced the same task
 count and score, confirming no tasks were dropped by parallel pagination.
 
-Still to do: List-level concurrency, target 3–6 minutes, full end-to-end test, then merge.
+Still to do: List-level concurrency, target 3â€“6 minutes, full end-to-end test, then merge.
