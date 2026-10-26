@@ -77,6 +77,13 @@ export default function ReportView({
   const [spaces, setSpaces] = useState<StructureSpace[] | null>(null)
   const insufficient = result.activeTasks === 0 || result.coverage.scored <= 2
   const workspacesHref = sample ? '/' : connectionId ? `/workspaces?connection=${connectionId}` : '/'
+  const quality = result.dataQuality
+  const limitedCoverage =
+    quality &&
+    (quality.partial ||
+      quality.truncated ||
+      quality.listsSampled ||
+      quality.tasksScanned < quality.tasksExpected)
 
   useEffect(() => {
     getStructure(scanId, sample)
@@ -150,6 +157,29 @@ export default function ReportView({
             <Button onClick={() => setPdfOpen(true)} className="px-6 py-3 text-sm" icon={<IconDownload className="h-4 w-4" />}>Download PDF</Button>
           </div>
         </div>
+
+        {limitedCoverage && quality && (
+          <Panel className="mb-6 border-amber-300/60 bg-amber-50 p-5">
+            <div className="flex flex-wrap items-start gap-3">
+              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+              <div>
+                <p className="font-display text-sm font-medium text-txt-primary">
+                  This report is based on partial workspace coverage
+                </p>
+                <p className="mt-1 text-[13px] leading-relaxed text-txt-muted">
+                  Read {quality.listsScanned.toLocaleString()} of {quality.listsTotal.toLocaleString()} Lists and{' '}
+                  {quality.tasksScanned.toLocaleString()} of {quality.tasksExpected.toLocaleString()} tasks.
+                  {quality.truncated ? ' Some very large Lists were capped before the final page.' : ''}
+                  {quality.listsSampled ? ' The workspace exceeded the List coverage cap.' : ''}
+                  {quality.failedLists > 0 ? ` ${quality.failedLists} Lists could not be read.` : ''}
+                  {quality.signalsMeasured != null && quality.signalsTotal != null
+                    ? ` ${quality.signalsMeasured} of ${quality.signalsTotal} scored signals were measurable.`
+                    : ''}
+                </p>
+              </div>
+            </div>
+          </Panel>
+        )}
 
         <div id="overview" className="scroll-mt-[150px]">
           <ScoreHero result={result} />

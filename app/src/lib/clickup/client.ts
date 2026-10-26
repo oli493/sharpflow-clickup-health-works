@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto'
+import fs from 'node:fs'
+import nodePath from 'node:path'
 import type {
   ClickUpComment,
   ClickUpCustomField,
@@ -8,11 +11,13 @@ import type {
   ClickUpSpace,
   ClickUpTask,
   ClickUpTeam,
+  ClickUpTimeEntry,
   ClickUpView,
 } from './types'
 
 const API = 'https://api.clickup.com/api/v2'
 const REQUEST_TIMEOUT_MS = 30_000
+const CACHE_DIR = process.env.CLICKUP_CACHE_DIR
 
 interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined>
@@ -53,6 +58,16 @@ export class ClickUpClient {
       for (const [k, v] of Object.entries(opts.query)) {
         if (v !== undefined && v !== null) url.searchParams.set(k, String(v))
       }
+    }
+
+    const method = opts.method ?? 'GET'
+    const cacheKey =
+      CACHE_DIR && method === 'GET'
+        ? createHash('sha256').update(`${this.token}|${method}|${url.toString()}`).digest('hex')
+        : null
+    const cachePath = cacheKey ? nodePath.join(CACHE_DIR as string, `${cacheKey}.json`) : null
+    if (cachePath && fs.existsSync(cachePath)) {
+      return JSON.parse(fs.readFileSync(cachePath, 'utf8')) as T
     }
 
     let attempt = 0
@@ -98,7 +113,15 @@ export class ClickUpClient {
         throw new ClickUpError(res.status, text, path)
       }
 
-      return (await res.json()) as T
+      const data = (await res.json()) as T
+      if (cachePath) {
+        fs.mkdirSync(nodePath.dirname(cachePath), { recursive: true })
+        fs.writeFileSync(cachePath, JSON.stringify(data), 'utf8')
+      }
+      if (process.env.CLICKUP_DEBUG === '1') {
+        console.error(`[clickup] ${path}`)
+      }
+      return data
     }
   }
 
@@ -139,12 +162,16 @@ export class ClickUpClient {
   }
 
   /** Iterate tasks for a list, following pagination. `maxPages` bounds a single
-   * very large list (e.g. 10k+ tasks) so one step can't exceed the function timeout. */
-  async *iterateTasks(listId: string, maxPages = 40): AsyncGenerator<ClickUpTask> {
-    for (let page = 0; page < maxPages; page += 1) {
+   * very large list (e.g. 10k+ tasks) so one step can't exceed the function timeout.
+   * The caller must flag truncation if it stops before `last_page`. */
+  async *iterateTasks(listId: string, options: { startPage?: number; maxPages?: number } = {}): AsyncGenerator<ClickUpTask> {
+    const startPage = options.startPage ?? 0
+    const maxPages = options.maxPages ?? 500
+    for (let i = 0; i < maxPages; i += 1) {
+      const page = startPage + i
       const { tasks, last_page } = await this.getTasks(listId, page)
       for (const t of tasks) yield t
-      if (last_page || tasks.length === 0) break
+      if (last_page || tasks.length === 0) return
     }
   }
 
@@ -166,6 +193,21 @@ export class ClickUpClient {
   /** Comments on a task (sampled — one call per task). */
   getTaskComments(taskId: string): Promise<{ comments: ClickUpComment[] }> {
     return this.request(`/task/${taskId}/comment`)
+  }
+
+  /** Workspace time entries for a date range (used for the 90-day time-tracking signal). */
+  async getTeamTimeEntries(teamId: string, startMs: number, endMs: number): Promise<ClickUpTimeEntry[]> {
+    const entries: ClickUpTimeEntry[] = []
+    for (let page = 0; page < 200; page += 1) {
+      const res = await this.request<{ data?: ClickUpTimeEntry[]; last_page?: boolean }>(
+        `/team/${teamId}/time_entries`,
+        { query: { start_date: startMs, end_date: endMs, page } },
+      )
+      const rows = res.data ?? []
+      entries.push(...rows)
+      if (res.last_page || rows.length === 0) break
+    }
+    return entries
   }
 
   /** Create a task in a List (used for lead capture into the Sharpflow CRM). */
