@@ -18,18 +18,6 @@ export interface MapInput {
   utilisation: MapUtilisation[]
   scannedAt?: string
   coverageLimited?: boolean
-  dataQuality?: {
-    partial: boolean
-    listsScanned: number
-    listsTotal: number
-    listsSampled: boolean
-    tasksScanned: number
-    tasksExpected: number
-    truncated: boolean
-    failedLists: number
-    signalsMeasured?: number
-    signalsTotal?: number
-  }
 }
 
 const PCT_KEYS = new Set([
@@ -55,24 +43,11 @@ const METRIC_LABEL: Record<string, string> = {
 }
 
 const DRILL: Record<string, string> = {
-  overdue_rate: 'overdue',
-  stale_30_60: 'stale-30',
-  stale_60_90: 'stale-60',
-  stale_90plus: 'stale-90',
-  dormant_list_60: 'dormant-lists-60',
-  dormant_list_90: 'dormant-lists-90',
-  fragmented_lists: 'fragmented-lists',
-  unused_statuses: 'unused-statuses',
-  custom_field_count: 'custom-fields',
-  cf_completion: 'custom-fields',
-  cf_never_filled: 'custom-fields',
-  missing_required_cf: 'custom-fields',
-  inactive_members: 'inactive-members',
-  duplicate_statuses: 'duplicate-statuses',
-  views: 'views',
-  dormant_spaces: 'dormant-spaces',
-  due_date_coverage: 'missing-due',
-  ownership_coverage: 'missing-owner',
+  overdue_rate: 'overdue', stale_30_60: 'stale', stale_60_90: 'stale', stale_90plus: 'stale',
+  dormant_list_60: 'dormant-lists', dormant_list_90: 'dormant-lists', fragmented_lists: 'dormant-lists',
+  unused_statuses: 'unused-statuses', custom_field_count: 'custom-fields', cf_completion: 'custom-fields',
+  cf_never_filled: 'custom-fields', missing_required_cf: 'custom-fields', inactive_members: 'inactive-members',
+  duplicate_statuses: 'duplicate-statuses', views: 'views', dormant_spaces: 'dormant-spaces',
 }
 
 function fmtValue(metricKey: string, v: number): { metric: string; label: string } {
@@ -94,8 +69,8 @@ function chipsFor(key: string, m: Metrics, ws: MapInput['workspace']): CategoryM
   switch (key) {
     case 'architecture':
       add('avgTasksPerList', 'Avg tasks / List')
-      add('dormantList90PlusPct', 'Dormant Lists 90d+', 'dormant-lists-90')
-      add('fragmentedListsPct', 'Fragmented Lists', 'fragmented-lists')
+      add('dormantList90PlusPct', 'Dormant Lists 90d+', 'dormant-lists')
+      add('fragmentedListsPct', 'Fragmented Lists', 'dormant-lists')
       break
     case 'workflow':
       add('statusesPerWorkflow', 'Statuses / workflow')
@@ -109,7 +84,7 @@ function chipsFor(key: string, m: Metrics, ws: MapInput['workspace']): CategoryM
       break
     case 'operational':
       add('overdueRate', 'Overdue rate', 'overdue')
-      add('stale90PlusPct', 'Stale 90d+', 'stale-90')
+      add('stale90PlusPct', 'Stale 90d+', 'stale')
       add('wipPerPerson', 'Open / person')
       break
     case 'adoption':
@@ -219,13 +194,6 @@ export function toScanResult(input: MapInput): ScanResult {
   )
 
   const summary = buildSummary(input)
-  const scoredSignals = CATEGORIES.flatMap((category) => category.signals).filter(
-    (signal) => !signal.insightOnly && signal.weight > 0,
-  )
-  const measuredSignals = scoredSignals.filter((signal) => {
-    const value = metrics[signal.metricKey]
-    return typeof value === 'number' && !Number.isNaN(value)
-  }).length
 
   return {
     id: input.id,
@@ -246,13 +214,6 @@ export function toScanResult(input: MapInput): ScanResult {
     findingsSummary: counts,
     findings,
     coverage: engine.coverage,
-    dataQuality: input.dataQuality
-      ? {
-          ...input.dataQuality,
-          signalsMeasured: measuredSignals,
-          signalsTotal: scoredSignals.length,
-        }
-      : undefined,
     coverageLimited: input.coverageLimited ?? false,
     performingWell,
     utilisation: input.utilisation,

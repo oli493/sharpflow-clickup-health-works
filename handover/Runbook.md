@@ -81,29 +81,26 @@ Schema: `app/supabase/schema.sql`. Tables: `connections`, `scans`, `findings`, `
 `scan_samples`, `leads`. RLS is enabled; the app uses the service-role key (server-side only).
 
 Inspect/recover a stuck scan via the REST API (service key) or the Supabase dashboard — a `running`
-scan older than 45 min is flipped to `failed` automatically on the next status poll.
+scan older than 20 min is flipped to `failed` automatically on the next status poll.
 
 ---
 
 ## 6. The scan worker (`app/src/inngest/scan.ts`)
 
 - **Bounded by work, not list count:** structure is read in **2 Spaces** per step (`SPACE_BATCH`);
-  task analysis runs in steps of up to **50 task pages** (`MAX_LIST_PAGES_PER_STEP`), and each List is
-  read to its final page with a **400-page safety cap** (`MAX_PAGES_PER_LIST`). A safety-cap hit is
-  recorded in `dataQuality.truncated` and shown on the report.
-- **Coverage cap:** `SAMPLE_LIST_LIMIT = 1000` Lists. If exceeded, the scan is marked sampled and the
-  report shows a coverage banner.
-- **Partial failures:** failed Lists are recorded; material missing data fails the scan instead of
-  publishing a misleading score.
+  task analysis runs in steps of up to **25 task pages** (`PAGE_BUDGET`), with a **40-page cap per
+  List** (`iterateTasks(..., maxPages)`). Progress updates throughout, so no step approaches the
+  5-minute limit — even for a 10k+ task List.
+- **Coverage cap:** `SAMPLE_LIST_LIMIT = 1000` Lists (largest workspaces are sampled beyond that).
 - **Request timeout:** every ClickUp call has a **30 s** timeout and retries `429`/`5xx`/timeouts.
 - **Failure handling:** the handler wraps the run in try/catch and marks the scan `failed` with the
-  error; an Inngest `onFailure` and the **stale-scan reaper** (`/api/scans/[id]`, 45 min) back it up.
+  error; an Inngest `onFailure` and the **stale-scan reaper** (`/api/scans/[id]`, 20 min) back it up.
 - Typical timings: a normal workspace → 1–3 min; `EES Agency` (~48k tasks / 388 Lists) → ~13–15 min;
   `Eyes On` (~19k tasks / 383 Lists incl. very large Lists) → ~18 min.
 - To re-run: from `/workspaces`, pick the workspace → **Run audit** (or `POST /api/scans`).
 
-Tuning: `MAX_LIST_PAGES_PER_STEP` and `MAX_PAGES_PER_LIST` control step time — raise the per-step
-budget for fewer/faster steps (up to the 300 s limit), lower it for more headroom.
+Tuning: `PAGE_BUDGET` and the per-List `maxPages` cap control step time — raise `PAGE_BUDGET` for
+fewer/faster steps (up to the 300 s limit), lower it for more headroom.
 
 ---
 

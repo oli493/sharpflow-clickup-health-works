@@ -97,7 +97,7 @@ subscription plans, advanced reporting, additional AI functionality, connectors 
 **Assets**
 - Sharpflow wordmark (dark green "Sharp" + "flow" in a dark-green box, lime text).
 - Sharpflow mark (lime "S" flow on dark green).
-- **ClickUp Diamond Partner 2026 badge** — displayed as a trust signal (lead-capture panel).
+- **ClickUp Sapphire Partner 2026 badge** — displayed as a trust signal (lead-capture panel).
 - ClickUp brand assets used only for the partner/badge context (https://clickup.com/brand); note ClickUp's own fonts differ (Plus Jakarta Sans / Inter / Sometype Mono) and are **not** used for the product UI.
 
 **Reference:** https://sharpflowconsulting.com · Brand guidelines: Canva (sharpflow)
@@ -233,27 +233,6 @@ Feasibility: **✓** measurable · **~** partial/conditional · **✕** not expo
 > **Notes:** due-date coverage and estimate coverage are scored **once, in Reporting Readiness only**
 > (removed from Operational Health and Platform Utilisation to avoid double-counting). Weights for the
 > three new signals were set by us and other signals in those categories rebalanced to keep totals at 100%.
-
-### Correctness amendments (v1.1, branch `fix/scanner-correctness`)
-
-These correct the implementation without changing the agreed model:
-
-- **Open-task coverage:** due-date, ownership and estimate coverage are calculated over **open tasks**,
-  not all tasks.
-- **Full task coverage:** no silent 4,000-task cap. A List is read to its final page; any safety-cap
-  truncation is recorded in `dataQuality` and shown on the report.
-- **Dormant items:** an item is not dormant just because it has no tasks. Dormant requires no activity
-  for the threshold period, using creation date when available. New empty items are not penalised.
-- **Distinct workflows:** count unique status workflows (signatures), not Spaces.
-- **Custom fields:** count configured field definitions, including fields never used on a task.
-- **Comment rate:** sample across Lists and count only comments from the last 30 days.
-- **Activity concentration:** use recent activity, not historical task volume.
-- **Time tracking:** use workspace time entries for the last 90 days; fall back to "any time logged"
-  with an explicit label if the endpoint is unavailable.
-- **Partial scans:** failed Lists are recorded; a scan with material missing data fails instead of
-  publishing a misleading score. Partial/sampled scans show a coverage banner.
-- **Signal coverage:** the report records how many scored signals were measurable, not just how many
-  categories were scored.
 
 ### Definitions
 | Term | Definition |
