@@ -13,9 +13,9 @@ const SAMPLE_LIST_LIMIT = 1000
 const SAMPLE_ROWS = 100
 const COMMENT_SAMPLE = 60
 // Work is split into small steps so no single serverless invocation approaches
-// the platform's function time limit. One List per step keeps each step bounded
-// even when a workspace contains a very large list (e.g. 10k+ tasks).
-const LIST_BATCH = 1
+// the platform's function time limit. Task analysis is bounded by a *page budget*
+// (not a list count) so a step never runs long even if a workspace has a 10k+ task List.
+const PAGE_BUDGET = 25 // task pages per step (keeps each step well under 300s)
 const SPACE_BATCH = 2
 
 const ROLE_LABEL: Record<number, string> = { 1: 'Owner', 2: 'Admin', 3: 'Member', 4: 'Guest' }
@@ -235,12 +235,15 @@ export const scanWorkspace = inngest.createFunction(
 
     /* ---------------------- tasks (chunked by list) ----------------------- */
 
-    const listChunks = chunk(structure.lists, LIST_BATCH)
+    const lists = structure.lists
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const partials: any[] = []
 
-    for (let i = 0; i < listChunks.length; i++) {
-      const part = await step.run(`scan-tasks-${i}`, async () => {
+    let idx = 0
+    let stepNo = 0
+    while (idx < lists.length) {
+      const start = idx
+      const part = await step.run(`scan-tasks-${stepNo}`, async () => {
         let totalTasks = 0
         let openTasks = 0
         let overdue = 0
@@ -287,7 +290,12 @@ export const scanWorkspace = inngest.createFunction(
         const sampleStale: Record<string, string | number>[] = []
         const sampleMissingDue: Record<string, string | number>[] = []
 
-        for (const list of listChunks[i]) {
+        let pagesUsed = 0
+        let li = start
+        // Process whole Lists until this step's page budget is spent (always at
+        // least one, so progress is guaranteed).
+        while (li < lists.length && (li === start || pagesUsed < PAGE_BUDGET)) {
+          const list = lists[li]
           let requiredFieldIds: string[] = []
           try {
             const { fields } = await client.getCustomFields(list.id)
@@ -435,6 +443,9 @@ export const scanWorkspace = inngest.createFunction(
             stale: staleInList,
             last_activity: lastActivity,
           })
+
+          pagesUsed += Math.max(1, Math.ceil(countInList / 100))
+          li += 1
         }
 
         return {
@@ -466,17 +477,18 @@ export const scanWorkspace = inngest.createFunction(
           recentTaskIds,
           activeMemberIds: [...activeMembers],
           memberActivity: [...memberActivity.entries()],
+          nextIndex: li,
         }
       })
       partials.push(part)
+      idx = (part.nextIndex as number) ?? lists.length
+      stepNo += 1
 
-      // Update progress periodically (not every list) to keep the step count tidy.
-      const isLastBatch = i === listChunks.length - 1
-      if (isLastBatch || (i + 1) % 10 === 0) {
+      if (idx >= lists.length || stepNo % 3 === 0) {
         await progress(
-          `progress-scan-${i}`,
-          Math.min(54, 35 + Math.round(((i + 1) / listChunks.length) * 19)),
-          `Analysing tasks — ${Math.min((i + 1) * LIST_BATCH, structure.lists.length)}/${structure.lists.length} Lists`,
+          `progress-scan-${stepNo}`,
+          Math.min(54, 35 + Math.round((idx / lists.length) * 19)),
+          `Analysing tasks — ${Math.min(idx, lists.length)}/${lists.length} Lists`,
         )
       }
     }

@@ -3,9 +3,10 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-// A scan still "running" after this long is treated as stuck (the worker's
-// steps each finish in seconds, so a normal scan is well under this).
-const STALE_MS = 20 * 60 * 1000
+// A scan still "running" after this long is treated as stuck. It must exceed the
+// slowest legitimate scan — very large workspaces can legitimately take 20–30 min,
+// so 45 min avoids killing a healthy-but-slow run while still clearing true hangs.
+const STALE_MS = 45 * 60 * 1000
 
 // Scan status + progress + (when complete) the report result.
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
