@@ -452,7 +452,7 @@ npm run build                     # next build  (do NOT run while `next dev` is 
   - `SHARPFLOW CONSULTING LTD` → **74/100 (C)** · `Astrocorn Industries` → **58/100 (D)** ·
     `Santa Iontchevska's Workspace` → **54–55/100 (D)**.
 - **Failure handling:** a failed scan is recorded as `failed` with its error; a stale-scan reaper marks
-  any `running` scan `failed` after 20 min — so nothing hangs indefinitely.
+  any `running` scan `failed` after 45 min — so nothing hangs indefinitely.
 
 ---
 
@@ -549,13 +549,13 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 
 ## 20. Post-launch changes (since first handover)
 
-- **Scan worker rewritten for scale.** Task analysis is split into small steps
-  (`LIST_BATCH = 25` Lists per step; structure in `SPACE_BATCH = 4` Spaces per step) with live
-  per-chunk progress, plus a **30 s per-request timeout** on the ClickUp client. This fixed a hard
-  bug where one monolithic step exceeded Vercel's 5-minute invocation limit on large workspaces
-  (`FUNCTION_INVOCATION_TIMEOUT`) and left the scan stuck at 35% forever.
+- **Scan worker bounded by work, not list count.** Task analysis runs in page-budgeted steps
+  (`PAGE_BUDGET = 25` task pages per step, with a `maxPages = 40` cap per List); structure runs in
+  `SPACE_BATCH = 2` Spaces per step; plus a **30 s per-request timeout** on the ClickUp client.
+  This fixed 300 s step timeouts on large workspaces (incl. single Lists with 10k+ tasks) and the
+  scan being stuck at one percentage forever.
 - **Failure + stale handling.** The handler records failures directly (try/catch) → the scan row is
-  marked `failed` with its error; an Inngest `onFailure` and a 20-minute **stale-scan reaper** back it up.
+  marked `failed` with its error; an Inngest `onFailure` and a **45-minute stale-scan reaper** back it up.
 - **Coverage cap** raised to **1000 Lists** (`SAMPLE_LIST_LIMIT`).
 - **Unauthorised-workspace handling.** ClickUp `OAUTH_192` is mapped to a clear "reconnect and select
   this workspace" message + a Reconnect button; the workspace picker only lists readable workspaces.

@@ -87,17 +87,20 @@ scan older than 20 min is flipped to `failed` automatically on the next status p
 
 ## 6. The scan worker (`app/src/inngest/scan.ts`)
 
-- **Chunked for scale:** structure is read in **4 Spaces** per step; tasks in **25 Lists** per step
-  (`SPACE_BATCH`, `LIST_BATCH`). Progress updates after every chunk, so the bar moves and each
-  serverless invocation stays well under the 5-minute limit.
+- **Bounded by work, not list count:** structure is read in **2 Spaces** per step (`SPACE_BATCH`);
+  task analysis runs in steps of up to **25 task pages** (`PAGE_BUDGET`), with a **40-page cap per
+  List** (`iterateTasks(..., maxPages)`). Progress updates throughout, so no step approaches the
+  5-minute limit — even for a 10k+ task List.
 - **Coverage cap:** `SAMPLE_LIST_LIMIT = 1000` Lists (largest workspaces are sampled beyond that).
 - **Request timeout:** every ClickUp call has a **30 s** timeout and retries `429`/`5xx`/timeouts.
 - **Failure handling:** the handler wraps the run in try/catch and marks the scan `failed` with the
   error; an Inngest `onFailure` and the **stale-scan reaper** (`/api/scans/[id]`, 20 min) back it up.
-- Typical timings: a normal workspace → 1–3 min; `EES Agency` (~48k tasks / 388 Lists) → ~13–15 min.
+- Typical timings: a normal workspace → 1–3 min; `EES Agency` (~48k tasks / 388 Lists) → ~13–15 min;
+  `Eyes On` (~19k tasks / 383 Lists incl. very large Lists) → ~18 min.
 - To re-run: from `/workspaces`, pick the workspace → **Run audit** (or `POST /api/scans`).
 
-Tuning: bigger batches = fewer steps but longer steps (risk the 300 s limit); smaller = safer/slower.
+Tuning: `PAGE_BUDGET` and the per-List `maxPages` cap control step time — raise `PAGE_BUDGET` for
+fewer/faster steps (up to the 300 s limit), lower it for more headroom.
 
 ---
 
@@ -145,7 +148,7 @@ needs a sending address/DNS record on the Sharpflow domain.)
 | Symptom | Cause / fix |
 |---|---|
 | **"Workspace not authorized" (`OAUTH_192`)** | ClickUp scopes a token to the workspace chosen at consent. Reconnect ClickUp and select the workspace; the app shows a Reconnect button for this. |
-| **Scan stuck on a %** | Shouldn't happen now. If it does, the 20-min reaper will mark it `failed`; check the Inngest run + Vercel function logs. |
+| **Scan stuck on a %** | Shouldn't happen now. If it does, the 45-min reaper will mark it `failed`; check the Inngest run + Vercel function logs. |
 | **`FUNCTION_INVOCATION_TIMEOUT` (504)** | A single step ran >5 min. Reduce batch sizes or raise `maxDuration` (route `/api/inngest`). |
 | **Link preview not updating** | Platforms cache previews — re-share the link (or append `?`) to refresh. |
 | **Connect fails / `?connect=error`** | Check `CLICKUP_REDIRECT_URI` matches the deployed callback and the ClickUp app's redirect URL. |
