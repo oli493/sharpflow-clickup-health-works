@@ -21,8 +21,6 @@ import {
   type SpaceActivity,
   type SpaceWorkflow,
 } from '@/lib/scan/metrics'
-import { mapWithConcurrency } from '@/lib/scan/concurrency'
-import { scanList } from '@/lib/scan/tasks'
 
 const DAY = DAY_MS
 const STALE_DAYS = 90
@@ -32,8 +30,7 @@ const SAMPLE_ROWS = 100
 const COMMENT_SAMPLE = 60
 const MAX_LIST_PAGES_PER_STEP = 50
 const MAX_PAGES_PER_LIST = 400
-const PAGE_WINDOW = Math.min(24, Math.max(1, Number(process.env.CLICKUP_PAGE_WINDOW ?? 16)))
-const SPACE_BATCH = 4
+const SPACE_BATCH = 2
 
 const ROLE_LABEL: Record<number, string> = { 1: 'Owner', 2: 'Admin', 3: 'Member', 4: 'Guest' }
 
@@ -146,7 +143,7 @@ export const scanWorkspace = inngest.createFunction(
   {
     id: 'scan-workspace',
     // Persist a failed status so the UI can explain what happened instead of
-    // spinning forever â€” without this the scan row stays "running" on error.
+    // spinning forever — without this the scan row stays "running" on error.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onFailure: async ({ event }: any) => {
       if (process.env.SCAN_DRY_RUN === '1') return
@@ -257,20 +254,16 @@ export const scanWorkspace = inngest.createFunction(
         let emptyFolders = 0
         let viewCount = 0
 
-        const spaceParts = await mapWithConcurrency(spaceChunks[i], 2, async (space) => {
-          const spaceLists: ListRef[] = []
-          const spaceViewSamples: Record<string, string | number>[] = []
-          const spaceStatuses = space.statuses.map((status) => ({ name: status.status, type: status.type }))
-          let spaceFolderCount = 0
-          let spaceEmptyFolders = 0
-          let spaceViewCount = 0
+        for (const space of spaceChunks[i]) {
+          for (const st of space.statuses) statuses.push({ name: st.status, type: st.type })
+          statusCounts.push(space.statuses.length)
 
           try {
             const { views } = await client.getViews(space.id)
-            spaceViewCount = views?.length ?? 0
-            for (const view of views ?? []) {
-              if (spaceViewSamples.length < SAMPLE_ROWS) {
-                spaceViewSamples.push({ view: view.name, space: space.name, type: view.type })
+            viewCount += views?.length ?? 0
+            for (const v of views ?? []) {
+              if (viewSamples.length < SAMPLE_ROWS) {
+                viewSamples.push({ view: v.name, space: space.name, type: v.type })
               }
             }
           } catch {
@@ -278,64 +271,32 @@ export const scanWorkspace = inngest.createFunction(
           }
 
           const { folders } = await client.getFolders(space.id)
-          spaceFolderCount = folders.length
-          const folderLists = await mapWithConcurrency(folders, 4, async (folder) => {
-            try {
-              const { lists: listsInFolder } = await client.getLists(folder.id)
-              return listsInFolder ?? []
-            } catch {
-              return []
-            }
-          })
-
-          for (let folderIndex = 0; folderIndex < folders.length; folderIndex += 1) {
-            const listsInFolder = folderLists[folderIndex]
-            if (!listsInFolder.length) spaceEmptyFolders += 1
-            for (const list of listsInFolder) {
-              spaceLists.push({
-                id: list.id,
-                name: list.name,
+          for (const folder of folders) {
+            folderCount += 1
+            const { lists: folderLists } = await client.getLists(folder.id)
+            if (!folderLists || folderLists.length === 0) emptyFolders += 1
+            for (const l of folderLists ?? []) {
+              lists.push({
+                id: l.id,
+                name: l.name,
                 spaceId: space.id,
                 spaceName: space.name,
-                taskCount: list.task_count,
-                createdAt: list.date_created ? Number(list.date_created) : undefined,
+                taskCount: l.task_count,
+                createdAt: l.date_created ? Number(l.date_created) : undefined,
               })
             }
           }
-
           const { lists: folderless } = await client.getFolderlessLists(space.id)
-          for (const list of folderless ?? []) {
-            spaceLists.push({
-              id: list.id,
-              name: list.name,
+          for (const l of folderless ?? []) {
+            lists.push({
+              id: l.id,
+              name: l.name,
               spaceId: space.id,
               spaceName: space.name,
-              taskCount: list.task_count,
-              createdAt: list.date_created ? Number(list.date_created) : undefined,
+              taskCount: l.task_count,
+              createdAt: l.date_created ? Number(l.date_created) : undefined,
             })
           }
-
-          return {
-            lists: spaceLists,
-            folderCount: spaceFolderCount,
-            emptyFolders: spaceEmptyFolders,
-            viewCount: spaceViewCount,
-            viewSamples: spaceViewSamples,
-            statuses: spaceStatuses,
-            statusCounts: [space.statuses.length],
-          }
-        })
-
-        for (const part of spaceParts) {
-          lists.push(...part.lists)
-          folderCount += part.folderCount
-          emptyFolders += part.emptyFolders
-          viewCount += part.viewCount
-          for (const view of part.viewSamples) {
-            if (viewSamples.length < SAMPLE_ROWS) viewSamples.push(view)
-          }
-          statuses.push(...part.statuses)
-          statusCounts.push(...part.statusCounts)
         }
 
         return { lists, folderCount, emptyFolders, viewCount, viewSamples, statuses, statusCounts }
@@ -345,7 +306,7 @@ export const scanWorkspace = inngest.createFunction(
       await progress(
         `progress-structure-${i}`,
         Math.min(34, 15 + Math.round(((i + 1) / spaceChunks.length) * 19)),
-        `Mapping workspace structure â€” ${Math.min((i + 1) * SPACE_BATCH, head.spaces.length)}/${head.spaces.length} Spaces`,
+        `Mapping workspace structure — ${Math.min((i + 1) * SPACE_BATCH, head.spaces.length)}/${head.spaces.length} Spaces`,
       )
     }
 
@@ -475,18 +436,252 @@ export const scanWorkspace = inngest.createFunction(
         const sampleMissingOwner: Record<string, string | number>[] = []
 
         const batch = selectBatch(lists, start, MAX_LIST_PAGES_PER_STEP)
-        const listParts = await mapWithConcurrency(
-          batch,
-          Math.min(6, Math.max(1, Number(process.env.CLICKUP_LIST_CONCURRENCY ?? 4))),
-          (list) =>
-            scanList(client, list, now, {
-              pageWindow: PAGE_WINDOW,
-              maxPages: MAX_PAGES_PER_LIST,
-            }),
-        )
-        return { listParts, nextIndex: start + batch.length }
+        for (const list of batch) {
+          try {
+          let requiredFieldIds: string[] = []
+          try {
+            const { fields } = await client.getCustomFields(list.id)
+            requiredFieldIds = (fields ?? []).filter((field) => field.required).map((field) => field.id)
+            for (const field of fields ?? []) {
+              fieldDefs.push({ id: field.id, name: field.name, type: field.type, scope: list.name })
+            }
+          } catch {
+            /* Some Lists have no accessible fields. */
+          }
+
+          let countInList = 0
+          let openInList = 0
+          let overdueInList = 0
+          let staleInList = 0
+          let lastActivity = 0
+          let page = 0
+          let lastPage = false
+          let truncatedList = false
+          // Subtasks always live in the same List as their parent in ClickUp, so
+          // parent "closed" state can be resolved per List (keeps steps small).
+          const listClosed = new Map<string, boolean>()
+          const listSubtasks: { parentId: string; open: boolean }[] = []
+
+          while (!lastPage) {
+            const { tasks, last_page } = await client.getTasks(list.id, page)
+            lastPage = Boolean(last_page) || tasks.length === 0
+            for (const task of tasks) {
+            countInList += 1
+            totalTasks += 1
+            const closedType = task.status?.type === 'closed' || task.status?.type === 'done'
+            const dueMs = task.due_date ? Number(task.due_date) : null
+            const updatedMs = task.date_updated ? Number(task.date_updated) : null
+            const createdMs = task.date_created ? Number(task.date_created) : null
+            const closedMs = task.date_closed ? Number(task.date_closed) : null
+            if (updatedMs && updatedMs > lastActivity) lastActivity = updatedMs
+            const statusName = task.status?.status ?? ''
+            usedStatus.add(statusName)
+            const spaceUsage = usedStatusBySpace[list.spaceId] ?? {}
+            spaceUsage[statusName] = (spaceUsage[statusName] ?? 0) + 1
+            usedStatusBySpace[list.spaceId] = spaceUsage
+            const recentlyActive =
+              (createdMs !== null && now - createdMs <= ACTIVE_DAYS * DAY) ||
+              (updatedMs !== null && now - updatedMs <= ACTIVE_DAYS * DAY)
+            if (recentlyActive) recentBySpace[list.spaceId] = (recentBySpace[list.spaceId] ?? 0) + 1
+            listClosed.set(task.id, closedType)
+
+            const cfs = (task as { custom_fields?: { id: string; value: unknown }[] }).custom_fields
+            if (cfs) {
+              for (const cf of cfs) {
+                const st = fieldStats.get(cf.id) ?? { filled: 0, slots: 0 }
+                st.slots += 1
+                cfSlots += 1
+                const v = cf.value
+                const empty = v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0)
+                if (!empty) {
+                  st.filled += 1
+                  cfFilled += 1
+                }
+                fieldStats.set(cf.id, st)
+              }
+            }
+
+            if (requiredFieldIds.length) {
+              const cfMap = new Map((cfs ?? []).map((cf) => [cf.id, cf.value]))
+              for (const fid of requiredFieldIds) {
+                requiredSlots += 1
+                const v = cfMap.get(fid)
+                const empty = v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0)
+                if (empty) requiredMissing += 1
+              }
+            }
+
+            if (task.creator?.id && createdMs && now - createdMs <= ACTIVE_DAYS * DAY) {
+              activeMembers.add(task.creator.id)
+              bump(task.creator.id, createdMs)
+            }
+            const touchedRecently =
+              (closedMs !== null && now - closedMs <= ACTIVE_DAYS * DAY) ||
+              (updatedMs !== null && now - updatedMs <= ACTIVE_DAYS * DAY)
+            if (touchedRecently) {
+              for (const a of task.assignees ?? []) {
+                activeMembers.add(a.id)
+                bump(a.id, updatedMs ?? closedMs ?? now)
+              }
+            }
+            if (updatedMs && now - updatedMs <= ACTIVE_DAYS * DAY && recentTaskIds.length < COMMENT_SAMPLE) {
+              recentTaskIds.push(task.id)
+            }
+
+            if (task.parent) {
+              subtasksTotal += 1
+              listSubtasks.push({ parentId: task.parent, open: !closedType })
+            }
+            if (!closedType) {
+              openTasks += 1
+              openInList += 1
+              if (!dueMs) openNoDue += 1
+              if (!task.assignees || task.assignees.length === 0) openNoAssignee += 1
+              if (task.time_estimate) openWithEstimate += 1
+              if (dueMs && dueMs < now) {
+                overdue += 1
+                overdueInList += 1
+                if (sampleOverdue.length < SAMPLE_ROWS) {
+                  sampleOverdue.push({
+                    task: task.name,
+                    assignee: task.assignees?.[0]?.username ?? '— none —',
+                    space: list.spaceName,
+                    due: `-${Math.round((now - dueMs) / DAY)}d`,
+                    status: task.status?.status ?? '—',
+                    priority: task.priority?.priority ?? '—',
+                  })
+                }
+              }
+              if (updatedMs) {
+                const age = now - updatedMs
+                if (age >= STALE_DAYS * DAY) stale90 += 1
+                else if (age >= 60 * DAY) stale60 += 1
+                else if (age >= 30 * DAY) stale30 += 1
+                if (age >= 30 * DAY) {
+                  staleInList += 1
+                  if (sampleStale.length < SAMPLE_ROWS) {
+                    sampleStale.push({
+                      task: task.name,
+                      owner: task.assignees?.[0]?.username ?? '— none —',
+                      space: list.spaceName,
+                      lastUpdate: `${Math.round(age / DAY)}d ago`,
+                      ageDays: Math.round(age / DAY),
+                      status: task.status?.status ?? '—',
+                    })
+                  }
+                }
+              }
+            }
+            if (!dueMs) {
+              noDue += 1
+              if (!closedType && sampleMissingDue.length < SAMPLE_ROWS) {
+                sampleMissingDue.push({
+                  task: task.name,
+                  assignee: task.assignees?.[0]?.username ?? '— none —',
+                  space: list.spaceName,
+                  created: createdMs ? `${Math.round((now - createdMs) / DAY)}d ago` : '—',
+                })
+              }
+            }
+            if (!task.assignees || task.assignees.length === 0) {
+              noAssignee += 1
+              if (!closedType && sampleMissingOwner.length < SAMPLE_ROWS) {
+                sampleMissingOwner.push({
+                  task: task.name,
+                  space: list.spaceName,
+                  created: createdMs ? `${Math.round((now - createdMs) / DAY)}d ago` : '—',
+                  status: task.status?.status ?? '—',
+                })
+              }
+            }
+            if (task.time_estimate) withEstimate += 1
+            if (task.time_spent && Number(task.time_spent) > 0) withTime += 1
+            if (task.dependencies && task.dependencies.length > 0) withDependency += 1
+            if (createdMs && now - createdMs <= STALE_DAYS * DAY) created90 += 1
+            if (closedMs && now - closedMs <= STALE_DAYS * DAY) completed90 += 1
+            }
+            page += 1
+            if (!lastPage && page >= MAX_PAGES_PER_LIST) {
+              truncatedList = true
+              break
+            }
+          }
+
+          for (const s of listSubtasks) {
+            if (s.open && listClosed.get(s.parentId) === true) subtasksUnderClosed += 1
+          }
+
+          perList.push({
+            list_id: list.id,
+            list_name: list.name,
+            space_id: list.spaceId,
+            space_name: list.spaceName,
+            tasks: countInList,
+            open_tasks: openInList,
+            overdue: overdueInList,
+            stale: staleInList,
+            last_activity: lastActivity,
+            created_at: list.createdAt ?? 0,
+            pages_scanned: page,
+            expected_tasks: list.taskCount ?? countInList,
+            truncated: truncatedList,
+          })
+
+          expectedTasks += list.taskCount ?? countInList
+          if (truncatedList) stepTruncated = true
+          } catch (error) {
+            expectedTasks += list.taskCount ?? 0
+            stepFailedLists.push({
+              listId: list.id,
+              listName: list.name,
+              error: (error as Error)?.message?.slice(0, 200) ?? 'list_read_failed',
+            })
+          }
+        }
+
+        return {
+          totalTasks,
+          openTasks,
+          overdue,
+          stale30,
+          stale60,
+          stale90,
+          noDue,
+          noAssignee,
+          withEstimate,
+          openNoDue,
+          openNoAssignee,
+          openWithEstimate,
+          withTime,
+          withDependency,
+          expectedTasks,
+          subtasksUnderClosed,
+          subtasksTotal,
+          created90,
+          completed90,
+          requiredSlots,
+          requiredMissing,
+          cfSlots,
+          cfFilled,
+          usedStatus: [...usedStatus],
+          usedStatusBySpace,
+          recentBySpace,
+          fieldStats: [...fieldStats.entries()],
+          fieldDefs,
+          perList,
+          sampleOverdue,
+          sampleStale,
+          sampleMissingDue,
+          sampleMissingOwner,
+          recentTaskIds,
+          activeMemberIds: [...activeMembers],
+          memberActivity: [...memberActivity.entries()],
+          truncated: stepTruncated,
+          failedLists: stepFailedLists,
+          nextIndex: start + batch.length,
+        }
       })
-      partials.push(...(part.listParts as unknown[]))
+      partials.push(part)
       idx = (part.nextIndex as number) ?? lists.length
       stepNo += 1
 
@@ -494,7 +689,7 @@ export const scanWorkspace = inngest.createFunction(
         await progress(
           `progress-scan-${stepNo}`,
           Math.min(54, 35 + Math.round((idx / lists.length) * 19)),
-          `Analysing tasks â€” ${Math.min(idx, lists.length)}/${lists.length} Lists`,
+          `Analysing tasks — ${Math.min(idx, lists.length)}/${lists.length} Lists`,
         )
       }
     }
@@ -529,7 +724,6 @@ export const scanWorkspace = inngest.createFunction(
       )
     }
     const partial = failedLists.length > 0 || truncated
-    const clientStats = client.getStats()
     const subtasksUnderClosed = sum('subtasksUnderClosed')
     const subtasksTotal = sum('subtasksTotal')
     const created90 = sum('created90')
@@ -701,7 +895,7 @@ export const scanWorkspace = inngest.createFunction(
             tasks: list.tasks,
             lastActivity: list.last_activity
               ? new Date(list.last_activity).toLocaleDateString('en-GB')
-              : 'â€” none â€”',
+              : '— none —',
             tier,
           }]
         }),
@@ -720,7 +914,7 @@ export const scanWorkspace = inngest.createFunction(
             tasks: list.tasks,
             lastActivity: list.last_activity
               ? new Date(list.last_activity).toLocaleDateString('en-GB')
-              : 'â€”',
+              : '—',
           })),
       },
       recentTaskIds,
@@ -735,14 +929,6 @@ export const scanWorkspace = inngest.createFunction(
         tasksExpected: Math.max(expectedTasks || totalTasks, totalTasks),
         truncated,
         failedLists: failedLists.length,
-        requests: clientStats.requests,
-        retries: clientStats.retries,
-        rateLimited: clientStats.rateLimited,
-        cacheHits: clientStats.cacheHits,
-        avgLatencyMs: clientStats.requests
-          ? Math.round(clientStats.totalLatencyMs / clientStats.requests)
-          : 0,
-        rateLimitPerMinute: clientStats.rateLimit.limit,
       },
     }
 
@@ -752,21 +938,17 @@ export const scanWorkspace = inngest.createFunction(
       let totalComments30d = 0
       const commenters = new Set<number>()
       const cutoff = now - ACTIVE_DAYS * DAY
-      const taskIds = (scan.recentTaskIds as string[]).slice(0, COMMENT_SAMPLE)
-      const commentPages = await mapWithConcurrency(taskIds, 6, async (taskId) => {
+      for (const tid of (scan.recentTaskIds as string[]).slice(0, COMMENT_SAMPLE)) {
         try {
-          const { comments } = await client.getTaskComments(taskId)
-          return comments ?? []
+          const { comments } = await client.getTaskComments(tid)
+          for (const comment of comments ?? []) {
+            const date = comment.date ? Number(comment.date) : null
+            if (date !== null && date < cutoff) continue
+            totalComments30d += 1
+            if (comment.user?.id) commenters.add(comment.user.id)
+          }
         } catch {
-          return []
-        }
-      })
-      for (const comments of commentPages) {
-        for (const comment of comments) {
-          const date = comment.date ? Number(comment.date) : null
-          if (date !== null && date < cutoff) continue
-          totalComments30d += 1
-          if (comment.user?.id) commenters.add(comment.user.id)
+          /* Individual task comment reads can fail; sample continues. */
         }
       }
       return { totalComments30d, commenterIds: [...commenters] }
@@ -832,7 +1014,7 @@ export const scanWorkspace = inngest.createFunction(
           tasks: space.tasks,
           lastActivity: space.lastActivity
             ? new Date(space.lastActivity).toLocaleDateString('en-GB')
-            : 'â€”',
+            : '—',
         }
       })
 
@@ -844,7 +1026,7 @@ export const scanWorkspace = inngest.createFunction(
         role: ROLE_LABEL[m.role] ?? String(m.role),
         lastActivity: memberActivityMap.has(m.id)
           ? `${Math.round((now - (memberActivityMap.get(m.id) ?? now)) / DAY)}d ago`
-          : 'â€” none in 30d',
+          : '— none in 30d',
       }))
 
     const metrics2: Metrics = {
@@ -909,7 +1091,7 @@ export const scanWorkspace = inngest.createFunction(
       'duplicate-statuses': structure.duplicateStatusList,
     }
 
-    // AI executive summary â€” explains the engine; falls back to templated text on failure.
+    // AI executive summary — explains the engine; falls back to templated text on failure.
     const finalReport = dryRun
       ? report
       : await step.run('ai-summary', async () => {

@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import nodePath from 'node:path'
-import { RateGovernor, type RateLimitInfo } from '@/lib/scan/concurrency'
 import type {
   ClickUpComment,
   ClickUpCustomField,
@@ -50,33 +49,8 @@ export class ClickUpError extends Error {
  * ClickUp rate limits are per-token and plan-gated (~100 req/min below Business Plus),
  * so we serialise requests and back off on 429.
  */
-export interface ClickUpStats {
-  requests: number
-  retries: number
-  rateLimited: number
-  cacheHits: number
-  totalLatencyMs: number
-  rateLimit: RateLimitInfo
-}
-
 export class ClickUpClient {
-  private readonly governor = new RateGovernor()
-  private stats = {
-    requests: 0,
-    retries: 0,
-    rateLimited: 0,
-    cacheHits: 0,
-    totalLatencyMs: 0,
-  }
-
   constructor(private readonly token: string) {}
-
-  getStats(): ClickUpStats {
-    return {
-      ...this.stats,
-      rateLimit: this.governor.getInfo(),
-    }
-  }
 
   private async request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     const url = new URL(`${API}${path}`)
@@ -93,7 +67,6 @@ export class ClickUpClient {
         : null
     const cachePath = cacheKey ? nodePath.join(CACHE_DIR as string, `${cacheKey}.json`) : null
     if (cachePath && fs.existsSync(cachePath)) {
-      this.stats.cacheHits += 1
       return JSON.parse(fs.readFileSync(cachePath, 'utf8')) as T
     }
 
@@ -102,14 +75,12 @@ export class ClickUpClient {
     // hard timeout so a stalled connection errors (and is retried) rather than
     // hanging the whole step forever.
     while (true) {
-      await this.governor.acquire()
-      const startedAt = Date.now()
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
       let res: Response | null = null
       try {
         res = await fetch(url, {
-          method,
+          method: opts.method ?? 'GET',
           headers: {
             Authorization: this.token,
             'Content-Type': 'application/json',
@@ -124,19 +95,7 @@ export class ClickUpClient {
         clearTimeout(timer)
       }
 
-      this.stats.requests += 1
-      this.stats.totalLatencyMs += Date.now() - startedAt
-      if (res) this.governor.updateFromHeaders(res.headers)
-
       if (res === null || res.status === 429 || res.status >= 500) {
-        this.stats.retries += 1
-        if (res?.status === 429) {
-          this.stats.rateLimited += 1
-          const retryAfter = Number(res.headers.get('retry-after') ?? '0')
-          const reset = Number(res.headers.get('x-ratelimit-reset') ?? '0')
-          const resetSeconds = reset > 0 ? Math.max(0, reset - Date.now() / 1000) : 0
-          this.governor.pause(retryAfter > 0 ? retryAfter : resetSeconds || 2)
-        }
         attempt += 1
         if (attempt > 6) {
           if (res === null) throw new Error(`ClickUp request timed out on ${path}`)
@@ -154,16 +113,7 @@ export class ClickUpClient {
         throw new ClickUpError(res.status, text, path)
       }
 
-      let data: T
-      try {
-        data = (await res.json()) as T
-      } catch {
-        this.stats.retries += 1
-        attempt += 1
-        if (attempt > 6) throw new Error(`ClickUp returned invalid JSON on ${path}`)
-        await new Promise((resolve) => setTimeout(resolve, Math.min(8000, 2 ** attempt * 400)))
-        continue
-      }
+      const data = (await res.json()) as T
       if (cachePath) {
         fs.mkdirSync(nodePath.dirname(cachePath), { recursive: true })
         fs.writeFileSync(cachePath, JSON.stringify(data), 'utf8')
