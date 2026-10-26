@@ -78,6 +78,12 @@ export interface ScanResult {
     failedLists: number
     signalsMeasured?: number
     signalsTotal?: number
+    requests?: number
+    retries?: number
+    rateLimited?: number
+    cacheHits?: number
+    avgLatencyMs?: number
+    rateLimitPerMinute?: number
   }
   /** True when the connecting user is not an Owner/Admin, so visibility is limited. */
   coverageLimited: boolean
