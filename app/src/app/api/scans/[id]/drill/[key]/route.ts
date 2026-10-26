@@ -47,9 +47,28 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string;
       .eq('dataset', 'dormant-lists')
       .maybeSingle()
     const allRows = (data?.rows as Record<string, unknown>[]) ?? []
-    const rows = allRows
-      .filter((row) => Number(row.tier ?? 0) >= days)
-      .sort((a, b) => String(a.lastActivity).localeCompare(String(b.lastActivity)))
+    if (allRows.length) {
+      const rows = allRows
+        .filter((row) => Number(row.tier ?? 0) >= days)
+        .sort((a, b) => String(a.lastActivity).localeCompare(String(b.lastActivity)))
+      return NextResponse.json({ key, ...meta, unit: `${rows.length} Lists`, rows })
+    }
+
+    const cutoff = new Date(Date.now() - days * 86_400_000).toISOString()
+    const fallback = await admin
+      .from('list_stats')
+      .select('*')
+      .eq('scan_id', params.id)
+      .or(`last_activity.is.null,last_activity.lt.${cutoff}`)
+      .order('last_activity', { ascending: true, nullsFirst: true })
+    const rows = (fallback.data ?? []).map((row) => ({
+      list: row.list_name,
+      space: row.space_name ?? '—',
+      tasks: row.tasks,
+      lastActivity: row.last_activity
+        ? new Date(row.last_activity).toLocaleDateString('en-GB')
+        : '— none —',
+    }))
     return NextResponse.json({ key, ...meta, unit: `${rows.length} Lists`, rows })
   }
 
@@ -79,7 +98,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string;
       .eq('dataset', 'stale')
       .maybeSingle()
     const allRows = (data?.rows as Record<string, unknown>[]) ?? []
-    const rows = allRows.filter((row) => Number(row.ageDays ?? 0) >= tier)
+    const hasAge = allRows.some((row) => row.ageDays !== undefined)
+    const rows = hasAge ? allRows.filter((row) => Number(row.ageDays ?? 0) >= tier) : allRows
     return NextResponse.json({ key, ...meta, unit: `${rows.length} sampled tasks`, rows })
   }
 
