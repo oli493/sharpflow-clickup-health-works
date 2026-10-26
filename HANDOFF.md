@@ -8,7 +8,7 @@
 > **No secret values are in this file.** Credentials live in `app/.env.local` (gitignored) and the
 > host/platform settings. See §13.
 
-Last updated: 12 Oct 2026 · repo HEAD at time of writing: `dcce457`
+Last updated: 26 Oct 2026 · branch `fix/scanner-correctness` (based on `4b218f1`)
 
 ---
 
@@ -550,13 +550,15 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 ## 20. Post-launch changes (since first handover)
 
 - **Scan worker bounded by work, not list count.** Task analysis runs in page-budgeted steps
-  (`PAGE_BUDGET = 25` task pages per step, with a `maxPages = 40` cap per List); structure runs in
-  `SPACE_BATCH = 2` Spaces per step; plus a **30 s per-request timeout** on the ClickUp client.
+  (`MAX_LIST_PAGES_PER_STEP = 50`), with a **400-page safety cap per List** (`MAX_PAGES_PER_LIST`);
+  structure runs in `SPACE_BATCH = 2` Spaces per step; plus a **30 s per-request timeout** on the
+  ClickUp client. Safety-cap truncation is recorded in `dataQuality.truncated`.
   This fixed 300 s step timeouts on large workspaces (incl. single Lists with 10k+ tasks) and the
   scan being stuck at one percentage forever.
 - **Failure + stale handling.** The handler records failures directly (try/catch) → the scan row is
   marked `failed` with its error; an Inngest `onFailure` and a **45-minute stale-scan reaper** back it up.
-- **Coverage cap** raised to **1000 Lists** (`SAMPLE_LIST_LIMIT`).
+- **Coverage cap** raised to **1000 Lists** (`SAMPLE_LIST_LIMIT`); if exceeded, the scan is marked
+  sampled and the report shows a coverage banner.
 - **Unauthorised-workspace handling.** ClickUp `OAUTH_192` is mapped to a clear "reconnect and select
   this workspace" message + a Reconnect button; the workspace picker only lists readable workspaces.
 - **Report UX:** findings in a **two-column grid**; **Rules & thresholds** as a collapsed dropdown;
@@ -566,3 +568,43 @@ npm run build                     # next build  (do NOT run while `next dev` is 
   Sharpflow brand image (`app/public/brand/share-card.png`).
 - **Lead-magnet playbook** at `handover/Lead-Magnet-Playbook.md`.
 - Performance: DOM-driven card tilt, click-only 3D raycasting, offscreen canvas pause, instant cursor.
+
+---
+
+## 21. Scanner correctness (v1.1, branch `fix/scanner-correctness`)
+
+This branch corrects the data layer without changing the agreed scoring model.
+
+- **Open-task coverage:** due-date, ownership and estimate coverage now use open tasks.
+- **No silent truncation:** Lists are read to the final page; safety-cap truncation and failed Lists
+  are recorded in `ScanResult.dataQuality` and shown in the report banner.
+- **Dormant logic:** empty/new Lists and Spaces are not counted as dormant unless they are older
+  than the threshold; creation dates are used where available.
+- **Distinct workflows:** counted from unique status signatures, not Space count.
+- **Per-workflow statuses:** unused statuses and statuses-per-workflow are calculated per workflow.
+- **Custom fields:** configured field definitions are counted, including fields never used on tasks.
+- **Comments:** sampled across Lists and filtered to the last 30 days.
+- **Activity concentration:** based on recent activity, not historical task volume.
+- **Time tracking:** uses workspace time entries for the last 90 days; falls back to “any time logged”
+  with an explicit label if the endpoint is unavailable.
+- **Drill-downs:** added `custom-fields`, `unused-statuses`, `fragmented-lists`, `missing-owner`,
+  stale tiers and dormant-list tiers; corrected labels and sample-row wording.
+- **Partial scans:** material missing data fails the scan instead of publishing a misleading score.
+
+Validation: `npm run typecheck`, `npm test` (56 tests + 1 opt-in validation test), `npm run build`.
+
+Real-workspace validation on **Eyes On** (383 Lists, 81,346 tasks):
+- baseline **76 (B)** -> branch **75 (B)**
+- full coverage: 383/383 Lists, 0 failures, 31/32 signals
+- Architecture 87 -> 88 (dormant fix)
+- Reporting 48 -> 45 (open-task due-date coverage is genuinely lower than the
+  old all-task number)
+- Workflow restored to 100 after reporting the worst workflow instead of
+  summing unused statuses
+- tasks scanned rose from ~55,947 (old 4,000/List cap) to 81,346 (full)
+- full end-to-end worker test verified the report, PDF and all repaired
+  drill-downs; the test scan and child rows were deleted afterwards
+- cached validation runs complete in ~2 minutes via the opt-in
+  `CLICKUP_CACHE_DIR`; the cache is never enabled in production
+
+No production env, domain, key or database changes are required.
