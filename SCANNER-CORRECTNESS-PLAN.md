@@ -683,7 +683,7 @@ Every score difference must be explainable by a specific fix.
 - [ ] A/B results reviewed and explained
 - [ ] Manual QA complete (build + sample page smoke-tested)
 - [x] Docs + changelog updated
-- [ ] PR ready
+- [x] Branch pushed and ready for PR (PR URL in branch output; GitHub CLI not installed)
 - [ ] **Misho explicitly says "merge"**
 - [ ] Merge to `main`
 - [ ] Vercel deploy + Inngest sync
