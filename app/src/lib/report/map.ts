@@ -35,6 +35,7 @@ export interface MapInput {
     cacheHits?: number
     avgLatencyMs?: number
     rateLimitPerMinute?: number
+    peakHeapBytes?: number
   }
 }
 

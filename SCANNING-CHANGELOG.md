@@ -59,26 +59,27 @@ Every change should be explainable by one of the fixes above.
 ### Not included
 
 - Production environment, domain, key rotation or database migrations.
-
 ## v1.2 - scan throughput
 
 Branch: `perf/scan-throughput`
 
 - Adaptive rate governor using ClickUp `X-RateLimit-*` headers
-- Task page windows (parallel pagination)
+- Bounded parallel task-page windows
 - Per-List scanning moved to `lib/scan/tasks.ts`
-- Four Lists processed concurrently, with 16-page windows inside each List
+- Four Lists processed concurrently with 4-page windows, memory-safe defaults
 - Parallel structure discovery and comment sampling
 - Retry on truncated/invalid JSON
-- Request/latency telemetry in dry-run validation
+- Heap and request telemetry in validation
 
-Measured on Eyes On: full 383/383 Lists, 81,340 tasks, 2,720 requests, 717 ms average latency,
-**6.9 minutes** (down from ~32-45 minutes uncached). No failed Lists.
+Final memory-capped run on Eyes On (`--max-old-space-size=2048`, 4 Lists x 4 pages):
 
-A cached sequential run (`CLICKUP_PAGE_WINDOW=1`) produced the same task count and score,
-confirming parallel pagination does not drop or duplicate tasks.
+- Score **75/100 (B)**
+- 382/382 Lists, 81,352 tasks, 0 failed, 0 truncated
+- Peak heap **730 MB**
+- Total time **9.7 minutes**
 
-End-to-end test on the branch: report page, PDF (~444 KB) and all repaired drill-downs verified;
-the test scan and child rows were deleted afterward.
+The earlier 6.9-minute version used 4 Lists x 16 pages and OOMed on Vercel at 2 GB.
+The memory-safe version stays well under 2 GB.
 
-Ready to merge correctness + speed.
+A previous end-to-end run verified the report page, PDF and all repaired drill-downs; the final
+configuration will be live-tested after deploy/resync.
