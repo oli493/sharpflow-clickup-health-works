@@ -32,7 +32,7 @@ const SAMPLE_ROWS = 100
 const COMMENT_SAMPLE = 60
 const MAX_LIST_PAGES_PER_STEP = 50
 const MAX_PAGES_PER_LIST = 400
-const PAGE_WINDOW = Math.min(8, Math.max(1, Number(process.env.CLICKUP_PAGE_WINDOW ?? 4)))
+const PAGE_WINDOW = Math.min(8, Math.max(1, Number(process.env.CLICKUP_PAGE_WINDOW ?? 6)))
 const SPACE_BATCH = 4
 
 const ROLE_LABEL: Record<number, string> = { 1: 'Owner', 2: 'Admin', 3: 'Member', 4: 'Guest' }

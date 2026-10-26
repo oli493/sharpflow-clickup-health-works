@@ -84,3 +84,14 @@ The memory-safe version stays well under 2 GB.
 Live validation after merge and Inngest resync: **~10.5 minutes**, score **75/100 (B)**,
 382/382 Lists, 81,357 tasks, peak heap **511 MB** on 2 GB, 0 failed, 0 truncated.
 Report, PDF and all repaired drill-downs verified; the test scan and child rows were deleted.
+## v1.3 - scanner tuning
+
+Branch: `perf/scan-tuning`
+
+- Increased task-page windows from 4 to 6 while keeping 4 Lists concurrent
+- Stayed on the 2 GB Standard Vercel plan
+- Memory-capped Eyes On run: **8.3 minutes**, peak heap **977 MB**
+- Score **75/100 (B)**, 382/382 Lists, 81,357 tasks, 0 failed, 0 truncated
+- No 429s and no retries
+- 4 x 8 was slower (8.8 min); 6 x 4 was slower (10.4 min)
+- No 4 GB upgrade required

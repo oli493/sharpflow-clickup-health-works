@@ -1,78 +1,60 @@
 # Scanner Speed Plan
 
-Branch: `perf/scan-throughput`
-Status: implemented and validated; ready for merge approval
-Live: `main` remains on the rolled-back 15-18 minute scanner until this branch is merged
+Branch: `perf/scan-tuning`
+Status: tuned and validated; ready for merge approval
+Live: `main` is currently on v1.3 (4 Lists x 4 pages, ~10.5 min)
 
 ## Goal
 
-Full-coverage scans on Eyes On should finish comfortably under 10 minutes, ideally 3-6 minutes.
+Full-coverage Eyes On scans should finish under 10 minutes while staying safely under the
+2 GB Vercel function limit. No 4 GB upgrade unless necessary.
 
 ## What changed
 
 - Adaptive `RateGovernor` driven by ClickUp `X-RateLimit-*` headers
 - Bounded `mapWithConcurrency` helper
-- Task page windows: fetch up to 16 pages per List in parallel
-- Per-List scanning moved to `lib/scan/tasks.ts`
-- Four Lists processed concurrently inside each step
-- Structure discovery in parallel (4 Spaces per step, folders in parallel)
-- Comments fetched in parallel (concurrency 6)
-- Retry on truncated/invalid JSON responses
-- Scan telemetry in `ScanResult.dataQuality` (dry-run validation)
+- Per-List scanning in `lib/scan/tasks.ts`
+- 4 Lists processed concurrently
+- Configurable task-page windows, memory-safe defaults
+- Parallel structure discovery and comment sampling
+- Retry on truncated/invalid JSON
+- Heap peaking telemetry in `ScanResult.dataQuality`
 
-## Measured on Eyes On
+## Tuning results
 
-| Metric | Before | Final |
-|---|---:|---:|
-| Lists | 383 | 383 |
-| Tasks | 81,346 | 81,340 |
-| Failed Lists | 0 | 0 |
-| Requests | - | 1,739 |
-| Average latency | - | 903 ms |
-| Detected rate limit | - | 10,000/min |
-| Peak heap | - | **730 MB** |
-| Total time | ~32-45 min | **9.7 min** |
+All runs used `NODE_OPTIONS=--max-old-space-size=2048`, no cache, full Eyes On workspace.
 
-The first high-concurrency version (4 Lists x 16 pages) reached 6.9 min locally but OOMed on Vercel at 2 GB.
-The memory-safe version uses 4 Lists x 4-page windows, processed with bounded memory:
+| Config (Lists x pages) | Time | Peak heap | Result |
+|---|---:|---:|---|
+| 2 x 4 | 11.8 min | 699 MB | Passed |
+| 3 x 4 | 9.8 min | 760 MB | Passed |
+| 4 x 4 (live v1.3) | 9.7 min | 730 MB | Passed |
+| 6 x 4 | 10.4 min | 727 MB | Slower |
+| **4 x 6** | **8.3 min** | **977 MB** | **Winner** |
+| 4 x 8 | 8.8 min | 952 MB | Slower than 4x6 |
 
-- 2 Lists x 4 pages: 11.8 min, 699 MB peak
-- 3 Lists x 4 pages: 9.8 min, 760 MB peak
-- 4 Lists x 4 pages: **9.7 min, 730 MB peak**
-
-4 Lists x 4 pages is the default. It stays well under the 2 GB Vercel limit.
-
-The parallel path was compared against a cached sequential run (`CLICKUP_PAGE_WINDOW=1`):
-both produced the same task count and the same score, so parallel pagination is not dropping
-or duplicating tasks.
-
-Score change 75 to 73 is data drift plus a threshold crossing:
-`fragmentedListsPct` moved from ~24.87% to ~25.13%, crossing the 25% Medium threshold.
-This is a model sensitivity, not a data-loss bug.
+The original 4 x 16 version reached 6.9 min locally but OOMed at 2 GB. The 4 x 6 version is the
+fastest memory-safe configuration on the 2 GB plan.
 
 ## Validation
 
-Memory-capped run (`NODE_OPTIONS=--max-old-space-size=2048`, 4 Lists x 4 pages, no cache):
+Memory-capped run (`--max-old-space-size=2048`, 4 Lists x 6 pages, no cache):
 
 - Score **75/100 (B)**
-- 382/382 Lists, 81,352 tasks, 0 failed, 0 truncated
-- Peak heap **730 MB**
-- Total time **9.7 min**
+- 382/382 Lists, 81,357 tasks, 0 failed, 0 truncated
+- Peak heap **977 MB**
+- Total time **8.3 min**
+- No 429s, no retries
 
-A previous end-to-end run on the branch verified the report page, PDF (~444 KB) and all repaired
-drill-downs; the final memory-safe configuration will be live-tested after deploy/resync.
+The parallel path matches the validated score and task counts. The score change from the old
+baseline is data drift plus the fragmented-list threshold, not data loss.
 
-## Live validation
+## Deployment plan
 
-After merge, Vercel deploy and Inngest resync:
-
-- Live Eyes On scan completed in **~10.5 minutes**
-- Score **75/100 (B)**, 16 findings
-- 382/382 Lists, **81,357 tasks**, 0 failed, 0 truncated
-- Peak heap **511 MB** on the 2 GB Vercel plan
-- Report page, PDF (~444 KB) and all repaired drill-downs verified
-- Test scan, 16 findings, 382 list_stats and 12 sample datasets deleted afterward
-
-## Status
-
-Merged and live on `main`. No further action required for this release.
+- Merge this tuning branch into `main`
+- Wait for Vercel deploy
+- Resync Inngest (skip Override Input)
+- Run the live Eyes On smoke scan
+- Verify report, PDF and drill-downs
+- Delete the test scan and child rows
+- Keep 2 GB Standard; no 4 GB upgrade needed
