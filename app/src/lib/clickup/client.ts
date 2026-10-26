@@ -8,6 +8,7 @@ import type {
   ClickUpSpace,
   ClickUpTask,
   ClickUpTeam,
+  ClickUpTimeEntry,
   ClickUpView,
 } from './types'
 
@@ -139,12 +140,16 @@ export class ClickUpClient {
   }
 
   /** Iterate tasks for a list, following pagination. `maxPages` bounds a single
-   * very large list (e.g. 10k+ tasks) so one step can't exceed the function timeout. */
-  async *iterateTasks(listId: string, maxPages = 40): AsyncGenerator<ClickUpTask> {
-    for (let page = 0; page < maxPages; page += 1) {
+   * very large list (e.g. 10k+ tasks) so one step can't exceed the function timeout.
+   * The caller must flag truncation if it stops before `last_page`. */
+  async *iterateTasks(listId: string, options: { startPage?: number; maxPages?: number } = {}): AsyncGenerator<ClickUpTask> {
+    const startPage = options.startPage ?? 0
+    const maxPages = options.maxPages ?? 500
+    for (let i = 0; i < maxPages; i += 1) {
+      const page = startPage + i
       const { tasks, last_page } = await this.getTasks(listId, page)
       for (const t of tasks) yield t
-      if (last_page || tasks.length === 0) break
+      if (last_page || tasks.length === 0) return
     }
   }
 
@@ -166,6 +171,21 @@ export class ClickUpClient {
   /** Comments on a task (sampled — one call per task). */
   getTaskComments(taskId: string): Promise<{ comments: ClickUpComment[] }> {
     return this.request(`/task/${taskId}/comment`)
+  }
+
+  /** Workspace time entries for a date range (used for the 90-day time-tracking signal). */
+  async getTeamTimeEntries(teamId: string, startMs: number, endMs: number): Promise<ClickUpTimeEntry[]> {
+    const entries: ClickUpTimeEntry[] = []
+    for (let page = 0; page < 200; page += 1) {
+      const res = await this.request<{ data?: ClickUpTimeEntry[]; last_page?: boolean }>(
+        `/team/${teamId}/time_entries`,
+        { query: { start_date: startMs, end_date: endMs, page } },
+      )
+      const rows = res.data ?? []
+      entries.push(...rows)
+      if (res.last_page || rows.length === 0) break
+    }
+    return entries
   }
 
   /** Create a task in a List (used for lead capture into the Sharpflow CRM). */
