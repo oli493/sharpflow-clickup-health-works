@@ -2,7 +2,7 @@
 
 Branch: `perf/scan-tuning`
 Status: tuned and validated; ready for merge approval
-Live: `main` is currently on v1.3 (4 Lists x 4 pages, ~10.5 min)
+Live: `main` is on v1.4 (4 Lists x 6 pages, ~9.6 min)
 
 ## Goal
 
@@ -49,12 +49,17 @@ Memory-capped run (`--max-old-space-size=2048`, 4 Lists x 6 pages, no cache):
 The parallel path matches the validated score and task counts. The score change from the old
 baseline is data drift plus the fragmented-list threshold, not data loss.
 
-## Deployment plan
+## Live validation
 
-- Merge this tuning branch into `main`
-- Wait for Vercel deploy
-- Resync Inngest (skip Override Input)
-- Run the live Eyes On smoke scan
-- Verify report, PDF and drill-downs
-- Delete the test scan and child rows
-- Keep 2 GB Standard; no 4 GB upgrade needed
+After merge, Vercel deploy and Inngest resync:
+
+- Live Eyes On scan completed in **~9.6 minutes**
+- Score **75/100 (B)**, 16 findings
+- 382/382 Lists, 81,357 tasks, 0 failed, 0 truncated
+- Peak heap **628 MB** on the 2 GB plan
+- Report page, PDF (~444 KB) and all repaired drill-downs verified
+- Test scan, 16 findings, 382 list_stats and 12 sample datasets deleted afterward
+
+## Status
+
+Merged and live. 2 GB Standard; no 4 GB upgrade needed.

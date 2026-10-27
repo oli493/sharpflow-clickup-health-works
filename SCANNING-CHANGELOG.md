@@ -95,3 +95,6 @@ Branch: `perf/scan-tuning`
 - No 429s and no retries
 - 4 x 8 was slower (8.8 min); 6 x 4 was slower (10.4 min)
 - No 4 GB upgrade required
+Live validation of v1.4: **~9.6 minutes**, score **75/100 (B)**, 382/382 Lists,
+81,357 tasks, peak heap **628 MB** on 2 GB, 0 failed, 0 truncated.
+Report, PDF and all repaired drill-downs verified; the test scan and child rows were deleted.
