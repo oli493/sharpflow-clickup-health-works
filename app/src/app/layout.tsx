@@ -6,7 +6,14 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://health.sharpflowconsulting.com'),
   title: 'Sharpflow ClickUp Health',
   description: 'Connect ClickUp and get an automated workspace health assessment.',
-  icons: { icon: '/brand/logo-mark.jpg' },
+  icons: {
+    icon: [
+      { url: '/icon.png', type: 'image/png', sizes: '512x512' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: [{ url: '/apple-icon.png', type: 'image/png', sizes: '180x180' }],
+  },
+  manifest: '/manifest.webmanifest',
   openGraph: {
     title: 'Sharpflow ClickUp Health',
     description: 'Get a free automated ClickUp workspace health check — score, findings and recommendations.',
