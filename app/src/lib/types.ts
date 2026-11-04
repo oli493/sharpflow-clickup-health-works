@@ -9,6 +9,24 @@ export interface CategoryMetric {
   drill?: string
 }
 
+export type SignalStatus = 'within' | 'below' | 'above' | 'not_measured' | 'insight'
+
+export interface SignalExplanation {
+  key: string
+  name: string
+  value: string
+  target: string
+  status: SignalStatus
+  severity?: Severity
+  weight: string
+  categoryPoints: number
+  overallPoints?: number
+  why: string
+  good: string
+  affected?: string
+  drill?: string
+}
+
 export interface CategoryResult {
   key: string
   name: string
@@ -16,6 +34,9 @@ export interface CategoryResult {
   scored: boolean
   blurb: string
   metrics: CategoryMetric[]
+  /** Points this category costs the overall score, on a 0-100 scale. */
+  overallImpact?: number
+  explainers?: SignalExplanation[]
 }
 
 export interface FindingResult {
@@ -29,6 +50,9 @@ export interface FindingResult {
   recommendation: string
   affected?: string
   drill?: string
+  target?: string
+  good?: string
+  impact?: string
 }
 
 export interface DrillColumn {

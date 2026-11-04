@@ -5,6 +5,7 @@ import path from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { ClickUpClient } from '../src/lib/clickup/client'
 import { decrypt } from '../src/lib/crypto'
+import { buildReportPdf } from '../src/lib/report-pdf'
 import { supabaseAdmin } from '../src/lib/supabase/server'
 import type { ScanResult } from '../src/lib/types'
 
@@ -240,6 +241,8 @@ describe.skipIf(!RUN)('real workspace scan validation', () => {
       expect(output.result).toBeDefined()
       const branch = output.result as ScanResult
       const baseline = target.baseline?.result ?? null
+      expect(branch.categories.every((c) => (c.explainers?.length ?? 0) > 0)).toBe(true)
+      expect(branch.findings.every((f) => f.good && f.target && f.impact)).toBe(true)
 
       const report = {
         workspace: target.workspaceName,
@@ -263,6 +266,8 @@ describe.skipIf(!RUN)('real workspace scan validation', () => {
           grade: branch.overallGrade,
           categories: categoryMap(branch),
           findings: findingKeys(branch),
+          explainers: Object.fromEntries(branch.categories.map((c) => [c.key, c.explainers?.length ?? 0])),
+          sampleWhy: branch.categories.find((c) => c.key === 'operational')?.explainers?.find((e) => e.status === 'above' || e.status === 'below')?.why ?? null,
           dataQuality: branch.dataQuality,
           failedLists: output.failedLists ?? [],
           metrics: output.metrics ?? {},
@@ -277,6 +282,10 @@ describe.skipIf(!RUN)('real workspace scan validation', () => {
         `${target.workspaceName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${Date.now()}.json`,
       )
       writeFileSync(file, JSON.stringify(report, null, 2), 'utf8')
+      const pdf = await buildReportPdf(branch)
+      expect(pdf.length).toBeGreaterThan(5000)
+      const pdfFile = file.replace(/\.json$/, '.pdf')
+      writeFileSync(pdfFile, pdf)
 
       const baselineScore = target.baseline?.overall_score ?? 'n/a'
       console.log(
@@ -284,8 +293,11 @@ describe.skipIf(!RUN)('real workspace scan validation', () => {
       )
       console.log(`Baseline scan: ${target.baseline?.id ?? 'none'} (${target.baseline?.created_at ?? 'n/a'})`)
       console.log('Category scores:', JSON.stringify(categoryMap(branch)))
+      console.log('Explainers:', JSON.stringify(Object.fromEntries(branch.categories.map((c) => [c.key, c.explainers?.length ?? 0]))))
+      console.log('Sample why:', branch.categories.find((c) => c.key === 'operational')?.explainers?.find((e) => e.status === 'above' || e.status === 'below')?.why ?? 'none')
       console.log('Data quality:', JSON.stringify(branch.dataQuality ?? null))
       console.log('Report:', file)
+      console.log('PDF:', pdfFile)
     },
     60 * 60 * 1000,
   )

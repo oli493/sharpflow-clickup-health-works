@@ -1,4 +1,7 @@
-import type { DrillDataset, DrillRow, ScanResult } from '../types'
+import { CATEGORIES } from '../scoring/model'
+import { severityFor } from '../scoring/engine'
+import { SIGNAL_COPY, SIGNAL_GOOD } from '../scoring/copy'
+import type { DrillDataset, DrillRow, ScanResult, Severity, SignalExplanation, SignalStatus } from '../types'
 
 const SPACES = ['Studio Ops', 'Client Delivery', 'Sales & Pipeline', 'Marketing', 'Finance', 'People & Culture']
 const MEMBERS = ['Emily B.', 'Marcus H.', 'Priya S.', 'Tom R.', 'Ava L.', 'Diego M.', 'Sofia K.', 'Liam O.', 'Nadia F.', 'Jonas W.', 'Ivy C.', 'Ben T.']
@@ -15,7 +18,7 @@ function pick<T>(arr: T[], n: number) {
 
 /* ------------------------------- scan result ------------------------------ */
 
-export const MOCK_SCAN: ScanResult = {
+const BASE_MOCK_SCAN: ScanResult = {
   id: 'mock',
   workspaceName: 'Northwind Creative',
   plan: 'Business Plus',
@@ -43,7 +46,7 @@ export const MOCK_SCAN: ScanResult = {
     { key: 'operational', name: 'Operational Health', score: 68, scored: true, blurb: 'A high overdue rate and a growing stale backlog are the biggest risks.', metrics: [
       { label: 'Overdue rate', value: '24.1%', tone: 'down', drill: 'overdue' }, { label: 'Stale 90d+', value: '612', tone: 'down', drill: 'stale-90' }, { label: 'Completion rate', value: '84%', tone: 'up' } ] },
     { key: 'adoption', name: 'Adoption & Activity', score: 79, scored: true, blurb: 'Most members are active, with a handful of quiet members and Spaces.', metrics: [
-      { label: 'Active members', value: '37 / 42', tone: 'up' }, { label: 'Inactive members', value: '5', tone: 'down', drill: 'inactive-members' }, { label: 'Guests', value: '38%' } ] },
+      { label: 'Active members', value: '34 / 42', tone: 'up' }, { label: 'Inactive members', value: '8', tone: 'down', drill: 'inactive-members' }, { label: 'Guests', value: '38%' } ] },
     { key: 'utilisation', name: 'Platform Utilisation', score: 57, scored: true, blurb: 'Several high-value ClickUp capabilities are enabled but barely used.', metrics: [
       { label: 'Scored signals', value: '3', tone: 'down' }, { label: 'Time tracking', value: '6%', tone: 'down' }, { label: 'Views / Space', value: '1.8', tone: 'down' } ] },
     { key: 'reporting', name: 'Reporting Readiness', score: 83, scored: true, blurb: 'Strong due-date and ownership coverage — reporting data is in good shape.', metrics: [
@@ -59,11 +62,11 @@ export const MOCK_SCAN: ScanResult = {
     { id: 'f-undated', title: 'Tasks missing due dates or owners', category: 'Data & Governance', severity: 'medium', metric: '1,284', metricLabel: 'active tasks without a due date', explanation: '1,284 active tasks have no due date and 731 have no assignee, which undermines accountability and on-time reporting.', recommendation: 'Add an automation that flags new tasks without an owner or due date, and default due-date rules per List.', affected: '1,284 tasks', drill: 'missing-due' },
     { id: 'f-timetracking', title: 'Time tracking enabled but unused', category: 'Platform Utilisation', severity: 'opportunity', metric: '6%', metricLabel: 'of tasks with any time logged', explanation: 'Time tracking is available across the workspace, but only 6% of tasks have time logged — capacity and forecasting data is unavailable.', recommendation: 'Roll out light time tracking on client-billable Lists only, so estimates and workload views become usable.' },
     { id: 'f-views', title: 'Views under-used', category: 'Platform Utilisation', severity: 'medium', metric: '1.8', metricLabel: 'Views per Space', explanation: 'Only ~1.8 saved views per Space exist, and 4 Spaces have no dashboard at all.', recommendation: 'Create one operational dashboard per Space for delivery, workload and overdue visibility.', affected: '4 Spaces without dashboards' },
-    { id: 'f-quiet', title: 'Inactive members', category: 'Adoption & Activity', severity: 'medium', metric: '5', metricLabel: 'members inactive for 30d', explanation: '5 of 42 members (about 12%) have not created, completed or commented on work in 30 days. Roles are exposed by the API, not billing, so this is activity-based.', recommendation: 'Confirm whether these members still need access, or reduce their seat type.', affected: '5 members', drill: 'inactive-members' },
+    { id: 'f-quiet', title: 'Inactive members', category: 'Adoption & Activity', severity: 'medium', metric: '8', metricLabel: 'members inactive for 30d', explanation: '8 of 42 members (about 19%) have not created, completed or commented on work in 30 days. Roles are exposed by the API, not billing, so this is activity-based.', recommendation: 'Confirm whether these members still need access, or reduce their seat type.', affected: '8 members', drill: 'inactive-members' },
   ],
   performingWell: [
     { title: 'Reporting readiness is strong', detail: '91% due-date coverage and 88% ownership make management reporting reliable.' },
-    { title: 'Most of the team is genuinely active', detail: '37 of 42 members created, completed or commented on work in the last 30 days.' },
+    { title: 'Most of the team is genuinely active', detail: '34 of 42 members created, completed or commented on work in the last 30 days.' },
     { title: 'Completion keeps ahead of creation', detail: '9,120 tasks completed vs 10,804 created in 90 days — a manageable, not runaway, backlog.' },
     { title: 'Structure is mostly healthy', detail: 'Only 6 Spaces and a 66-task average per List — no severe hierarchy bloat.' },
   ],
@@ -103,6 +106,157 @@ export const MOCK_SCAN: ScanResult = {
     { name: 'Guest vs member ratio', condition: 'guests / total users', threshold: '> 30% guests', severity: 'Medium', weight: '15%' },
     { name: 'Open subtasks under closed parents', condition: 'open subtasks under Done', threshold: '> 2% of subtasks', severity: 'Medium', weight: '15%' },
   ],
+}
+
+const MOCK_PCT_KEYS = new Set([
+  'dormantList60to90Pct', 'dormantList90PlusPct', 'fragmentedListsPct', 'emptyFoldersPct', 'cfCompletionPct', 'cfZeroFilledPct',
+  'missingRequiredCfPct', 'overdueRate', 'stale30to60Pct', 'stale60to90Pct', 'stale90PlusPct', 'openSubtasksUnderClosedPct',
+  'inactiveMemberPct', 'guestRatio', 'activityConcentration', 'dormantSpacesPct', 'creationVsCompletionPct',
+  'dueDateCoverage', 'ownershipCoverage', 'estimateCoverage', 'timeTrackedPct',
+])
+
+function mockValue(metricKey: string, value: number): string {
+  if (MOCK_PCT_KEYS.has(metricKey)) return `${Math.round(value * 100)}%`
+  return String(Math.round(value * 10) / 10).replace(/\.0$/, '')
+}
+
+const MOCK_SIGNAL_ROWS: Record<string, { value: number; categoryPoints: number; overallPoints?: number; severity?: Severity }> = {
+  avgTasksPerList: { value: 66.4, categoryPoints: 0 },
+  dormantList60to90Pct: { value: 0.04, categoryPoints: 0 },
+  dormantList90PlusPct: { value: 0.11, categoryPoints: 0.7, overallPoints: 0.1 },
+  fragmentedListsPct: { value: 0.38, categoryPoints: 2.2, overallPoints: 0.3, severity: 'high' },
+  emptyFoldersPct: { value: 0.08, categoryPoints: 0 },
+  statusesPerWorkflow: { value: 8, categoryPoints: 0 },
+  unusedStatuses: { value: 9, categoryPoints: 1.8, overallPoints: 0.3 },
+  duplicateStatusNames: { value: 2, categoryPoints: 1.2, overallPoints: 0.2 },
+  avgTimeInStatusDays: { value: 4.2, categoryPoints: 0 },
+  customFieldCount: { value: 148, categoryPoints: 1.6, overallPoints: 0.2 },
+  cfCompletionPct: { value: 0.43, categoryPoints: 2.4, overallPoints: 0.4 },
+  cfZeroFilledPct: { value: 0.412, categoryPoints: 1.4, overallPoints: 0.2, severity: 'high' },
+  missingRequiredCfPct: { value: 0.07, categoryPoints: 0 },
+  overdueRate: { value: 0.314, categoryPoints: 4.2, overallPoints: 0.8 },
+  stale30to60Pct: { value: 0.1, categoryPoints: 0.4, overallPoints: 0.1 },
+  stale60to90Pct: { value: 0.08, categoryPoints: 0.5, overallPoints: 0.1 },
+  stale90PlusPct: { value: 0.12, categoryPoints: 1.6, overallPoints: 0.3 },
+  openSubtasksUnderClosedPct: { value: 0.04, categoryPoints: 0.8, overallPoints: 0.2 },
+  creationVsCompletionPct: { value: 0.15, categoryPoints: 1, overallPoints: 0.2 },
+  wipPerPerson: { value: 19, categoryPoints: 0.6, overallPoints: 0.1 },
+  inactiveMemberPct: { value: 0.19, categoryPoints: 1.4, overallPoints: 0.2 },
+  guestRatio: { value: 0.38, categoryPoints: 1.1, overallPoints: 0.2 },
+  activityConcentration: { value: 0.72, categoryPoints: 0 },
+  commentsPerUserPerWeek: { value: 0.8, categoryPoints: 0.6, overallPoints: 0.1 },
+  dormantSpacesPct: { value: 0.17, categoryPoints: 0.7, overallPoints: 0.1 },
+  timeTrackedPct: { value: 0.03, categoryPoints: 0 },
+  viewsPerSpace: { value: 1.8, categoryPoints: 2, overallPoints: 0.2, severity: 'medium' },
+  dependenciesUsed: { value: 184, categoryPoints: 0 },
+  goalsTracked: { value: 2, categoryPoints: 0 },
+  docsUsed: { value: 1, categoryPoints: 0 },
+  customTaskTypes: { value: 4, categoryPoints: 0 },
+  dueDateCoverage: { value: 0.91, categoryPoints: 0 },
+  ownershipCoverage: { value: 0.88, categoryPoints: 0 },
+  estimateCoverage: { value: 0.34, categoryPoints: 1.2, overallPoints: 0.1 },
+  distinctWorkflows: { value: 6, categoryPoints: 0.5, overallPoints: 0.1 },
+}
+
+const MOCK_SIGNAL_DRILL: Record<string, string> = {
+  overdue_rate: 'overdue',
+  stale_30_60: 'stale-30',
+  stale_60_90: 'stale-60',
+  stale_90plus: 'stale-90',
+  dormant_list_60: 'dormant-lists-60',
+  dormant_list_90: 'dormant-lists-90',
+  fragmented_lists: 'fragmented-lists',
+  unused_statuses: 'unused-statuses',
+  custom_field_count: 'custom-fields',
+  cf_completion: 'custom-fields',
+  cf_never_filled: 'custom-fields',
+  missing_required_cf: 'custom-fields',
+  inactive_members: 'inactive-members',
+  duplicate_statuses: 'duplicate-statuses',
+  views: 'views',
+  dormant_spaces: 'dormant-spaces',
+  due_date_coverage: 'missing-due',
+  ownership_coverage: 'missing-owner',
+}
+
+const MOCK_CATEGORY_BLURB: Record<string, string> = {
+  architecture: 'Architecture & Structure is 81/100. Fragmented and dormant Lists are the main reasons it is not higher.',
+  workflow: 'Workflow Design is 77/100. Unused and duplicate statuses are the main reasons it is not higher.',
+  governance: 'Data & Governance is 62/100. Low field completion and Custom Field sprawl are the main reasons it is not higher.',
+  operational: 'Operational Health is 68/100. Overdue work and stale tasks are the main reasons it is not higher.',
+  adoption: 'Adoption & Activity is 79/100. Inactive members and guest access are the main reasons it is not higher.',
+  utilisation: 'Platform Utilisation is 57/100. Few saved Views and low time tracking are the main reasons it is not higher.',
+  reporting: 'Reporting Readiness is 83/100. Estimate coverage and workflow consistency are the main reasons it is not higher.',
+}
+
+const MOCK_CATEGORY_IMPACT: Record<string, number> = {
+  architecture: 2.9,
+  workflow: 3.5,
+  governance: 5.7,
+  operational: 6.4,
+  adoption: 3.2,
+  utilisation: 4.3,
+  reporting: 1.7,
+}
+
+function buildMockExplainers(): Record<string, SignalExplanation[]> {
+  const out: Record<string, SignalExplanation[]> = {}
+  for (const cat of CATEGORIES) {
+    out[cat.key] = cat.signals.map((sig) => {
+      const row = MOCK_SIGNAL_ROWS[sig.metricKey]
+      const value = row?.value ?? 0
+      const severity = sig.insightOnly ? null : (row?.severity ?? severityFor(sig, value))
+      const status: SignalStatus = sig.insightOnly
+        ? 'insight'
+        : severity
+          ? sig.direction === 'lower_worse' ? 'below' : 'above'
+          : 'within'
+      const copy = SIGNAL_COPY[sig.key]
+      let why = copy?.explanation ?? `${sig.name} is outside the configured target.`
+      if (status === 'within') why = 'This signal is within target, so it is not lowering the score.'
+      if (status === 'insight' && !severity) why = 'This is an insight-only signal. It does not affect the score.'
+      return {
+        key: sig.key,
+        name: sig.name,
+        value: mockValue(sig.metricKey, value),
+        target: sig.threshold,
+        status,
+        severity: severity ?? undefined,
+        weight: sig.insightOnly ? 'No score impact' : `${sig.weight}%`,
+        categoryPoints: row?.categoryPoints ?? 0,
+        overallPoints: row?.overallPoints ?? 0,
+        why,
+        good: SIGNAL_GOOD[sig.key] ?? `Target: ${sig.threshold}`,
+        drill: MOCK_SIGNAL_DRILL[sig.key],
+      }
+    })
+  }
+  return out
+}
+
+const MOCK_EXPLAINERS = buildMockExplainers()
+
+const MOCK_FINDING_META: Record<string, { target: string; good: string; impact: string }> = {
+  'f-overdue': { target: '< 15%', good: SIGNAL_GOOD.overdue_rate, impact: 'Costs 4.2 overall points' },
+  'f-frag': { target: '< 25%', good: SIGNAL_GOOD.fragmented_lists, impact: 'Costs 2.2 category points' },
+  'f-subtasks': { target: '< 2%', good: SIGNAL_GOOD.subtasks_under_closed, impact: 'Costs 0.8 category points' },
+  'f-stale': { target: '< 5%', good: SIGNAL_GOOD.stale_90plus, impact: 'Costs 1.6 category points' },
+  'f-customfields': { target: '0 fields at 0%', good: SIGNAL_GOOD.cf_never_filled, impact: 'Costs 1.4 category points' },
+  'f-undated': { target: '> 80% coverage', good: 'Keep due-date and ownership coverage above 80%.', impact: 'Costs 1.2 category points' },
+  'f-timetracking': { target: '>= 5%', good: SIGNAL_GOOD.time_tracking, impact: 'No score penalty' },
+  'f-views': { target: '>= 2 per Space', good: SIGNAL_GOOD.views, impact: 'Costs 2.0 category points' },
+  'f-quiet': { target: '< 15%', good: SIGNAL_GOOD.inactive_members, impact: 'Costs 1.4 category points' },
+}
+
+export const MOCK_SCAN: ScanResult = {
+  ...BASE_MOCK_SCAN,
+  categories: BASE_MOCK_SCAN.categories.map((c) => ({
+    ...c,
+    blurb: MOCK_CATEGORY_BLURB[c.key] ?? c.blurb,
+    overallImpact: MOCK_CATEGORY_IMPACT[c.key] ?? 0,
+    explainers: MOCK_EXPLAINERS[c.key] ?? [],
+  })),
+  findings: BASE_MOCK_SCAN.findings.map((f) => ({ ...f, ...(MOCK_FINDING_META[f.id] ?? {}) })),
 }
 
 export const MOCK_SCAN_STAGES = [
@@ -172,7 +326,7 @@ function missingDue(): DrillRow[] {
   }))
 }
 function quietSeats(): DrillRow[] {
-  return ['Emily B.', 'Tom R.', 'Nadia F.', 'Jonas W.', 'Ivy C.'].map((m, i) => ({
+  return ['Emily B.', 'Tom R.', 'Nadia F.', 'Jonas W.', 'Ivy C.', 'Liam O.', 'Ben T.', 'Ava L.'].map((m, i) => ({
     member: m,
     role: pick(['Member', 'Admin', 'Limited Member'], i * 4 + 1),
     lastActivity: `${Math.round(seeded(i * 7 + 2) * 60) + 30}d ago`,
@@ -193,7 +347,7 @@ export const MOCK_DRILL: Record<string, DrillDataset> = {
   overdue: { key: 'overdue', title: 'Overdue tasks', subtitle: 'Active tasks past their due date (worst first)', unit: '4,466 tasks', columns: [ { key: 'task', label: 'Task' }, { key: 'assignee', label: 'Assignee' }, { key: 'space', label: 'Space' }, { key: 'due', label: 'Overdue', align: 'right' }, { key: 'status', label: 'Status', align: 'right' }, { key: 'priority', label: 'Priority', align: 'right' } ], rows: overdueTasks() },
   stale: { key: 'stale', title: 'Stale tasks', subtitle: 'Open tasks untouched for 90+ days', unit: '612 tasks', columns: [ { key: 'task', label: 'Task' }, { key: 'owner', label: 'Owner' }, { key: 'space', label: 'Space' }, { key: 'lastUpdate', label: 'Last update', align: 'right' }, { key: 'status', label: 'Status', align: 'right' } ], rows: staleTasks() },
   'missing-due': { key: 'missing-due', title: 'Tasks without an owner or due date', subtitle: 'Active tasks missing critical scheduling data', unit: '1,284 tasks', columns: [ { key: 'task', label: 'Task' }, { key: 'assignee', label: 'Assignee' }, { key: 'space', label: 'Space' }, { key: 'created', label: 'Created', align: 'right' } ], rows: missingDue() },
-  'quiet-seats': { key: 'quiet-seats', title: 'Inactive members', subtitle: 'Members with no activity in the last 30 days', unit: '5 members', columns: [ { key: 'member', label: 'Member' }, { key: 'role', label: 'Role' }, { key: 'lastActivity', label: 'Last activity', align: 'right' } ], rows: quietSeats() },
+  'quiet-seats': { key: 'quiet-seats', title: 'Inactive members', subtitle: 'Members with no activity in the last 30 days', unit: '8 members', columns: [ { key: 'member', label: 'Member' }, { key: 'role', label: 'Role' }, { key: 'lastActivity', label: 'Last activity', align: 'right' } ], rows: quietSeats() },
   'unused-statuses': { key: 'unused-statuses', title: 'Unused & duplicate statuses', subtitle: 'Statuses applied to fewer than 1% of tasks', unit: '9 statuses', columns: [ { key: 'status', label: 'Status' }, { key: 'space', label: 'Space' }, { key: 'tasksUsing', label: 'Tasks using', align: 'right' }, { key: 'equivalent', label: 'Equivalent status', align: 'right' } ], rows: unusedStatuses() },
 }
 

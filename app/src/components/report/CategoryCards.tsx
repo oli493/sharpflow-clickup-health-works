@@ -1,10 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Panel } from '../ui'
 import { scoreBand } from '../../lib/format'
 import { useTilt } from '../../lib/useTilt'
 import { useDrill } from './Drill'
+import WhyScoreDrawer from './WhyScoreDrawer'
 import type { CategoryResult } from '../../lib/types'
 
 function MiniRing({ value, color }: { value: number; color: string }) {
@@ -25,7 +27,7 @@ function MiniRing({ value, color }: { value: number; color: string }) {
   )
 }
 
-function CatCard({ cat, index }: { cat: CategoryResult; index: number }) {
+function CatCard({ cat, index, onExplain }: { cat: CategoryResult; index: number; onExplain: (key: string) => void }) {
   const { ref } = useTilt<HTMLDivElement>({ max: 8 })
   const { open } = useDrill()
   const band = scoreBand(cat.score)
@@ -45,6 +47,13 @@ function CatCard({ cat, index }: { cat: CategoryResult; index: number }) {
             <p className="mt-2 text-[12.5px] leading-relaxed text-txt-faint">
               Not enough measurable data through the ClickUp API yet: excluded from the score.
             </p>
+            <button
+              onClick={() => onExplain(cat.key)}
+              className="mt-4 flex w-full items-center justify-between rounded-lg border border-line bg-white/60 px-3 py-2.5 text-left transition-colors hover:border-line-strong"
+            >
+              <span className="font-mono text-[10px] uppercase tracking-widest text-txt-muted">Why this is not measured</span>
+              <span className="font-mono text-[11px] text-txt-muted">-&gt;</span>
+            </button>
           </div>
         </div>
       </motion.div>
@@ -100,6 +109,14 @@ function CatCard({ cat, index }: { cat: CategoryResult; index: number }) {
               )
             })}
           </div>
+
+          <button
+            onClick={() => onExplain(cat.key)}
+            className="mt-4 flex w-full items-center justify-between rounded-lg border border-brand/30 bg-brand/[0.06] px-3 py-2.5 text-left transition-colors hover:bg-brand/10"
+          >
+            <span className="font-mono text-[10px] uppercase tracking-widest text-brand-glow">Why this score</span>
+            <span className="font-mono text-[11px] text-brand-glow">-&gt;</span>
+          </button>
         </Panel>
       </div>
     </motion.div>
@@ -107,10 +124,14 @@ function CatCard({ cat, index }: { cat: CategoryResult; index: number }) {
 }
 
 export default function CategoryCards({ categories }: { categories: CategoryResult[] }) {
+  const [explainKey, setExplainKey] = useState<string | null>(null)
+  const explainCategory = categories.find((c) => c.key === explainKey) ?? null
+
   return (
+    <>
     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
       {categories.map((cat, i) => (
-        <CatCard key={cat.key} cat={cat} index={i} />
+        <CatCard key={cat.key} cat={cat} index={i} onExplain={setExplainKey} />
       ))}
       <motion.div
         initial={{ opacity: 0, y: 26 }}
@@ -134,5 +155,7 @@ export default function CategoryCards({ categories }: { categories: CategoryResu
         </div>
       </motion.div>
     </div>
+    <WhyScoreDrawer category={explainCategory} onClose={() => setExplainKey(null)} />
+    </>
   )
 }
