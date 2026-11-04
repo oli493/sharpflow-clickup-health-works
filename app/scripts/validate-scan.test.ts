@@ -5,6 +5,7 @@ import path from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { ClickUpClient } from '../src/lib/clickup/client'
 import { decrypt } from '../src/lib/crypto'
+import { buildReportPdf } from '../src/lib/report-pdf'
 import { supabaseAdmin } from '../src/lib/supabase/server'
 import type { ScanResult } from '../src/lib/types'
 
@@ -281,6 +282,10 @@ describe.skipIf(!RUN)('real workspace scan validation', () => {
         `${target.workspaceName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${Date.now()}.json`,
       )
       writeFileSync(file, JSON.stringify(report, null, 2), 'utf8')
+      const pdf = await buildReportPdf(branch)
+      expect(pdf.length).toBeGreaterThan(5000)
+      const pdfFile = file.replace(/\.json$/, '.pdf')
+      writeFileSync(pdfFile, pdf)
 
       const baselineScore = target.baseline?.overall_score ?? 'n/a'
       console.log(
@@ -292,6 +297,7 @@ describe.skipIf(!RUN)('real workspace scan validation', () => {
       console.log('Sample why:', branch.categories.find((c) => c.key === 'operational')?.explainers?.find((e) => e.status === 'above' || e.status === 'below')?.why ?? 'none')
       console.log('Data quality:', JSON.stringify(branch.dataQuality ?? null))
       console.log('Report:', file)
+      console.log('PDF:', pdfFile)
     },
     60 * 60 * 1000,
   )
