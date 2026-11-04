@@ -244,33 +244,33 @@ export async function buildReportPdf(result: ScanResult, opts: ReportPdfOptions 
   sectionTitle('Findings & recommendations')
   for (const f of result.findings) {
     const color = SEV_COLOR[f.severity]
-    const explanationLines = wrap(f.explanation, 8.5, font, CW - 120)
-    const recommendationLines = wrap(`Recommendation: ${f.recommendation}`, 8.5, italic, CW - 120)
-    const targetLines = f.target ? wrap(`Target: ${f.target}`, 8.2, font, CW - 120) : []
-    const goodLines = f.good ? wrap(`What good looks like: ${f.good}`, 8.5, font, CW - 120) : []
+    const explanationLines = wrap(f.explanation, 8.5, font, CW - 160)
+    const recommendationLines = wrap(`Recommendation: ${f.recommendation}`, 8.5, italic, CW - 160)
+    const targetLines = f.target ? wrap(`Target: ${f.target}`, 8.2, font, CW - 160) : []
+    const goodLines = f.good ? wrap(`What good looks like: ${f.good}`, 8.5, font, CW - 160) : []
     const blockH = 42 + (explanationLines.length + recommendationLines.length + targetLines.length + goodLines.length) * 11 + 10
     need(blockH)
     const startY = y
     page.drawRectangle({ x: M, y: startY - blockH, width: 3, height: blockH, color })
     page.drawText(f.metric, { x: M + 12, y: startY - 16, size: 12, font: bold, color })
     page.drawText(f.metricLabel, { x: M + 12, y: startY - 28, size: 8, font, color: GREY })
-    page.drawText(f.title, { x: M + 110, y: startY - 15, size: 11, font: bold, color: GREEN })
-    page.drawText(`${f.category} | ${f.severity.toUpperCase()}${f.impact ? ` | ${f.impact}` : ''}`, { x: M + 110, y: startY - 28, size: 7.8, font, color })
+    page.drawText(f.title, { x: M + 150, y: startY - 15, size: 11, font: bold, color: GREEN })
+    page.drawText(`${f.category} | ${f.severity.toUpperCase()}${f.impact ? ` | ${f.impact}` : ''}`, { x: M + 150, y: startY - 28, size: 7.8, font, color })
     let ty = startY - 42
     for (const line of explanationLines) {
-      page.drawText(line, { x: M + 110, y: ty, size: 8.5, font, color: GREY })
+      page.drawText(line, { x: M + 150, y: ty, size: 8.5, font, color: GREY })
       ty -= 11
     }
     for (const line of recommendationLines) {
-      page.drawText(line, { x: M + 110, y: ty, size: 8.5, font: italic, color: GREEN2 })
+      page.drawText(line, { x: M + 150, y: ty, size: 8.5, font: italic, color: GREEN2 })
       ty -= 11
     }
     for (const line of targetLines) {
-      page.drawText(line, { x: M + 110, y: ty, size: 8.2, font, color: GREY })
+      page.drawText(line, { x: M + 150, y: ty, size: 8.2, font, color: GREY })
       ty -= 11
     }
     for (const line of goodLines) {
-      page.drawText(line, { x: M + 110, y: ty, size: 8.5, font, color: GREEN2 })
+      page.drawText(line, { x: M + 150, y: ty, size: 8.5, font, color: GREEN2 })
       ty -= 11
     }
     y = startY - blockH - 10
