@@ -240,6 +240,8 @@ describe.skipIf(!RUN)('real workspace scan validation', () => {
       expect(output.result).toBeDefined()
       const branch = output.result as ScanResult
       const baseline = target.baseline?.result ?? null
+      expect(branch.categories.every((c) => (c.explainers?.length ?? 0) > 0)).toBe(true)
+      expect(branch.findings.every((f) => f.good && f.target && f.impact)).toBe(true)
 
       const report = {
         workspace: target.workspaceName,
@@ -263,6 +265,8 @@ describe.skipIf(!RUN)('real workspace scan validation', () => {
           grade: branch.overallGrade,
           categories: categoryMap(branch),
           findings: findingKeys(branch),
+          explainers: Object.fromEntries(branch.categories.map((c) => [c.key, c.explainers?.length ?? 0])),
+          sampleWhy: branch.categories.find((c) => c.key === 'operational')?.explainers?.find((e) => e.status === 'above' || e.status === 'below')?.why ?? null,
           dataQuality: branch.dataQuality,
           failedLists: output.failedLists ?? [],
           metrics: output.metrics ?? {},
@@ -284,6 +288,8 @@ describe.skipIf(!RUN)('real workspace scan validation', () => {
       )
       console.log(`Baseline scan: ${target.baseline?.id ?? 'none'} (${target.baseline?.created_at ?? 'n/a'})`)
       console.log('Category scores:', JSON.stringify(categoryMap(branch)))
+      console.log('Explainers:', JSON.stringify(Object.fromEntries(branch.categories.map((c) => [c.key, c.explainers?.length ?? 0]))))
+      console.log('Sample why:', branch.categories.find((c) => c.key === 'operational')?.explainers?.find((e) => e.status === 'above' || e.status === 'below')?.why ?? 'none')
       console.log('Data quality:', JSON.stringify(branch.dataQuality ?? null))
       console.log('Report:', file)
     },
