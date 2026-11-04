@@ -213,14 +213,14 @@ function buildExplainer(
     key: sig.signalKey,
     name: sig.name,
     value,
-    target: sig.threshold,
+    target: targetFor(sig),
     status,
     severity: sig.severity ?? undefined,
     weight: sig.insightOnly ? 'No score impact' : `${sig.weight}%`,
     categoryPoints: Math.round(categoryPoints * 10) / 10,
     overallPoints: Math.round(overallPoints * 10) / 10,
     why: colonify(why),
-    good: colonify(SIGNAL_GOOD[sig.signalKey] ?? `Target: ${sig.threshold}`),
+    good: colonify(SIGNAL_GOOD[sig.signalKey] ?? `Target: ${targetFor(sig)}`),
     drill: DRILL[sig.signalKey],
   }
 }
@@ -279,8 +279,8 @@ export function toScanResult(input: MapInput): ScanResult {
         recommendation: colonify(copy?.recommendation ?? 'Review this area and bring it back within threshold.'),
         affected: explainer?.affected,
         drill: DRILL[f.signalKey],
-        target: f.threshold,
-        good: colonify(SIGNAL_GOOD[f.signalKey] ?? `Target: ${f.threshold}`),
+        target: explainer?.target ?? f.threshold,
+        good: colonify(SIGNAL_GOOD[f.signalKey] ?? `Target: ${explainer?.target ?? f.threshold}`),
         impact:
           explainer && explainer.overallPoints && explainer.overallPoints > 0
             ? `Costs ${explainer.overallPoints.toFixed(1)} overall points`
