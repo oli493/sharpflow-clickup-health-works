@@ -1,4 +1,4 @@
-import { CATEGORIES } from '../scoring/model'
+import { CATEGORIES, type Signal } from '../scoring/model'
 import { severityFor } from '../scoring/engine'
 import { SIGNAL_COPY, SIGNAL_GOOD } from '../scoring/copy'
 import type { DrillDataset, DrillRow, ScanResult, Severity, SignalExplanation, SignalStatus } from '../types'
@@ -120,6 +120,16 @@ function mockValue(metricKey: string, value: number): string {
   return String(Math.round(value * 10) / 10).replace(/\.0$/, '')
 }
 
+function mockTarget(sig: Signal): string {
+  const band = sig.bands[sig.bands.length - 1]
+  if (!band) return sig.threshold
+  const targetCmp = band.cmp === '>' ? '<=' : band.cmp === '>=' ? '<' : band.cmp === '<' ? '>=' : '>'
+  const value = MOCK_PCT_KEYS.has(sig.metricKey)
+    ? `${Math.round(band.value * 100)}%`
+    : String(Math.round(band.value * 100) / 100).replace(/\.0$/, '')
+  return `${targetCmp} ${value}`
+}
+
 const MOCK_SIGNAL_ROWS: Record<string, { value: number; categoryPoints: number; overallPoints?: number; severity?: Severity }> = {
   avgTasksPerList: { value: 66.4, categoryPoints: 0 },
   dormantList60to90Pct: { value: 0.04, categoryPoints: 0 },
@@ -219,7 +229,7 @@ function buildMockExplainers(): Record<string, SignalExplanation[]> {
         key: sig.key,
         name: sig.name,
         value: mockValue(sig.metricKey, value),
-        target: sig.threshold,
+        target: mockTarget(sig),
         status,
         severity: severity ?? undefined,
         weight: sig.insightOnly ? 'No score impact' : `${sig.weight}%`,

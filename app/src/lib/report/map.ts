@@ -92,6 +92,19 @@ function chipValue(metricKey: string, v: number): string {
   return PCT_KEYS.has(metricKey) ? `${Math.round(v * 100)}%` : String(Math.round(v * 10) / 10).replace(/\.0$/, '')
 }
 
+/** Turn the model's "bad when" band into a client-facing target. */
+function targetFor(sig: SignalScore): string {
+  const model = CATEGORIES.flatMap((c) => c.signals).find((s) => s.key === sig.signalKey)
+  const band = model?.bands[model.bands.length - 1]
+  if (!band) return sig.threshold
+  const targetCmp =
+    band.cmp === '>' ? '<=' : band.cmp === '>=' ? '<' : band.cmp === '<' ? '>=' : '>'
+  const value = PCT_KEYS.has(sig.metricKey)
+    ? `${Math.round(band.value * 100)}%`
+    : String(Math.round(band.value * 100) / 100).replace(/\.0$/, '')
+  return `${targetCmp} ${value}`
+}
+
 function chipsFor(key: string, m: Metrics, ws: MapInput['workspace']): CategoryMetric[] {
   const chips: CategoryMetric[] = []
   const add = (metricKey: string, label: string, drill?: string) => {
