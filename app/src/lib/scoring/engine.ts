@@ -14,6 +14,20 @@ export interface Finding {
   threshold: string
 }
 
+export interface SignalScore {
+  signalKey: string
+  metricKey: string
+  name: string
+  value: number | null
+  measured: boolean
+  insightOnly: boolean
+  severity: Severity | null
+  weight: number
+  penalty: number
+  pointsLost: number
+  threshold: string
+}
+
 export interface CategoryScore {
   key: string
   name: string
@@ -21,6 +35,9 @@ export interface CategoryScore {
   score: number
   /** False when no signals in the category had measurable data. */
   scored: boolean
+  /** Points lost inside this category, on a 0-100 category scale. */
+  pointsLost: number
+  signals: SignalScore[]
   findings: Finding[]
 }
 
@@ -101,30 +118,59 @@ export function evaluate(metrics: Metrics): ScoreResult {
     let weighted = 0
     let totalWeight = 0
     let allWeight = 0
+    const signalScores: SignalScore[] = []
 
     for (const sig of cat.signals) {
+      const raw = metrics[sig.metricKey]
+      const value = raw === undefined || Number.isNaN(raw) ? null : raw
+      const measured = value !== null
+
       if (sig.insightOnly || sig.weight === 0) {
-        const v = metrics[sig.metricKey]
-        if (v !== undefined && !Number.isNaN(v)) {
-          const sev = severityFor(sig, v)
-          if (sev) {
-            findings.push({
-              signalKey: sig.key,
-              categoryKey: cat.key,
-              categoryName: cat.name,
-              title: sig.name,
-              severity: sev,
-              metricValue: v,
-              threshold: sig.threshold,
-            })
-          }
+        const sev = value !== null ? severityFor(sig, value) : null
+        if (sev && value !== null) {
+          findings.push({
+            signalKey: sig.key,
+            categoryKey: cat.key,
+            categoryName: cat.name,
+            title: sig.name,
+            severity: sev,
+            metricValue: value,
+            threshold: sig.threshold,
+          })
         }
+        signalScores.push({
+          signalKey: sig.key,
+          metricKey: sig.metricKey,
+          name: sig.name,
+          value,
+          measured,
+          insightOnly: true,
+          severity: sev,
+          weight: 0,
+          penalty: 0,
+          pointsLost: 0,
+          threshold: sig.threshold,
+        })
         continue
       }
 
       allWeight += sig.weight
-      const value = metrics[sig.metricKey]
-      if (value === undefined || Number.isNaN(value)) continue
+      if (value === null) {
+        signalScores.push({
+          signalKey: sig.key,
+          metricKey: sig.metricKey,
+          name: sig.name,
+          value: null,
+          measured: false,
+          insightOnly: false,
+          severity: null,
+          weight: sig.weight,
+          penalty: 0,
+          pointsLost: 0,
+          threshold: sig.threshold,
+        })
+        continue
+      }
 
       totalWeight += sig.weight
       const sev = severityFor(sig, value)
@@ -142,17 +188,33 @@ export function evaluate(metrics: Metrics): ScoreResult {
 
       const penalty = sev ? Math.min(1, SEVERITY_PENALTY[sev] * magnitudeFor(sig, value)) : 0
       weighted += sig.weight * (1 - penalty)
+      signalScores.push({
+        signalKey: sig.key,
+        metricKey: sig.metricKey,
+        name: sig.name,
+        value,
+        measured: true,
+        insightOnly: false,
+        severity: sev,
+        weight: sig.weight,
+        penalty,
+        pointsLost: sig.weight * penalty,
+        threshold: sig.threshold,
+      })
     }
 
     // A category is only "scored" if enough of its signal weight was measurable.
     const scored = allWeight > 0 && totalWeight / allWeight >= 0.5
     const score = totalWeight > 0 ? Math.round((weighted / totalWeight) * 100) : 0
+    const pointsLost = totalWeight > 0 ? ((totalWeight - weighted) / totalWeight) * 100 : 0
     categories.push({
       key: cat.key,
       name: cat.name,
       weight: cat.weight,
       score,
       scored,
+      pointsLost,
+      signals: signalScores,
       findings: findings.filter((f) => f.categoryKey === cat.key),
     })
   }

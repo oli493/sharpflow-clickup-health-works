@@ -1,8 +1,8 @@
 import { CATEGORIES } from '../scoring/model'
-import { CATEGORY_BLURB, SEVERITY_LABEL, SIGNAL_COPY } from '../scoring/copy'
+import { CATEGORY_BLURB, SEVERITY_LABEL, SIGNAL_COPY, SIGNAL_GOOD } from '../scoring/copy'
 import { colonify } from '../text'
-import type { Metrics, ScoreResult } from '../scoring/engine'
-import type { CategoryMetric, CategoryResult, FindingResult, ScanResult, Severity, UtilStatus } from '../types'
+import type { Metrics, ScoreResult, SignalScore } from '../scoring/engine'
+import type { CategoryMetric, CategoryResult, FindingResult, ScanResult, Severity, SignalExplanation, SignalStatus, UtilStatus } from '../types'
 
 export interface MapUtilisation {
   capability: string
@@ -168,18 +168,85 @@ function buildSummary(input: MapInput): { headline: string; body: string; projec
   return { headline: colonify(headline), body: colonify(body), projected, ai: ai.map(colonify) }
 }
 
+function signalStatus(sig: SignalScore): SignalStatus {
+  if (sig.insightOnly) return 'insight'
+  if (!sig.measured) return 'not_measured'
+  if (!sig.severity) return 'within'
+  const model = CATEGORIES.flatMap((c) => c.signals).find((s) => s.key === sig.signalKey)
+  return model?.direction === 'lower_worse' ? 'below' : 'above'
+}
+
+function buildExplainer(
+  sig: SignalScore,
+  categoryWeight: number,
+  measuredWeight: number,
+  totalScoredWeight: number,
+): SignalExplanation {
+  const status = signalStatus(sig)
+  const copy = SIGNAL_COPY[sig.signalKey]
+  const value = sig.value === null ? 'Not measured' : fmtValue(sig.metricKey, sig.value).metric
+  const categoryPoints = measuredWeight > 0 ? (sig.pointsLost / measuredWeight) * 100 : 0
+  const overallPoints =
+    measuredWeight > 0 && totalScoredWeight > 0
+      ? categoryPoints * (categoryWeight / totalScoredWeight)
+      : 0
+
+  let why = copy?.explanation ?? `${sig.name} is outside the configured target (${sig.threshold}).`
+  if (status === 'within') why = 'This signal is within target, so it is not lowering the score.'
+  if (status === 'not_measured') why = 'ClickUp did not return enough data to measure this signal. It is excluded from the score.'
+  if (status === 'insight' && !sig.severity) why = 'This is an insight-only signal. It does not affect the score.'
+
+  return {
+    key: sig.signalKey,
+    name: sig.name,
+    value,
+    target: sig.threshold,
+    status,
+    severity: sig.severity ?? undefined,
+    weight: sig.insightOnly ? 'No score impact' : `${sig.weight}%`,
+    categoryPoints: Math.round(categoryPoints * 10) / 10,
+    overallPoints: Math.round(overallPoints * 10) / 10,
+    why: colonify(why),
+    good: colonify(SIGNAL_GOOD[sig.signalKey] ?? `Target: ${sig.threshold}`),
+    drill: DRILL[sig.signalKey],
+  }
+}
+
+function categorySummary(c: ScoreResult['categories'][number], explainers: SignalExplanation[]): string {
+  if (!c.scored) return 'Not enough measurable data to score this category.'
+  const bad = explainers
+    .filter((e) => e.status === 'below' || e.status === 'above')
+    .sort((a, b) => b.categoryPoints - a.categoryPoints)
+  if (bad.length === 0) return 'Every measured signal in this category is within target.'
+  const top = bad.slice(0, 2).map((e) => `${e.name} (${e.value} vs ${e.target})`)
+  return `${c.name} is ${c.score}/100. ${top.join(' and ')} ${bad.length === 1 ? 'is' : 'are'} the main reason it is not higher.`
+}
+
 /** Convert the deterministic engine result (+ context) into the report UI model. */
 export function toScanResult(input: MapInput): ScanResult {
   const { engine, metrics, workspace } = input
 
-  const categories: CategoryResult[] = engine.categories.map((c) => ({
-    key: c.key,
-    name: c.name,
-    score: c.score,
-    scored: c.scored,
-    blurb: colonify(CATEGORY_BLURB[c.key] ?? ''),
-    metrics: chipsFor(c.key, metrics, workspace),
-  }))
+  const totalScoredWeight = engine.categories.filter((c) => c.scored).reduce((sum, c) => sum + c.weight, 0)
+  const categories: CategoryResult[] = engine.categories.map((c) => {
+    const measuredWeight = c.signals
+      .filter((s) => s.measured && !s.insightOnly)
+      .reduce((sum, s) => sum + s.weight, 0)
+    const explainers = c.signals.map((s) => buildExplainer(s, c.weight, measuredWeight, totalScoredWeight))
+    const overallImpact =
+      c.scored && totalScoredWeight > 0 ? Math.round((c.pointsLost * c.weight / totalScoredWeight) * 10) / 10 : 0
+    return {
+      key: c.key,
+      name: c.name,
+      score: c.score,
+      scored: c.scored,
+      blurb: colonify(categorySummary(c, explainers)),
+      metrics: chipsFor(c.key, metrics, workspace),
+      overallImpact,
+      explainers,
+    }
+  })
+
+  const explainersBySignal = new Map(categories.flatMap((c) => (c.explainers ?? []).map((e) => [e.key, e] as const)))
 
   const findings: FindingResult[] = engine.findings
     .sort((a, b) => rank(a.severity) - rank(b.severity))
@@ -187,6 +254,7 @@ export function toScanResult(input: MapInput): ScanResult {
       const metricKey = CATEGORIES.flatMap((c) => c.signals).find((s) => s.key === f.signalKey)?.metricKey ?? ''
       const { metric, label } = fmtValue(metricKey, f.metricValue)
       const copy = SIGNAL_COPY[f.signalKey]
+      const explainer = explainersBySignal.get(f.signalKey)
       return {
         id: f.signalKey,
         title: f.title,
@@ -196,7 +264,14 @@ export function toScanResult(input: MapInput): ScanResult {
         metricLabel: label || f.threshold,
         explanation: colonify(copy?.explanation ?? `${f.title} is outside the configured threshold (${f.threshold}).`),
         recommendation: colonify(copy?.recommendation ?? 'Review this area and bring it back within threshold.'),
+        affected: explainer?.affected,
         drill: DRILL[f.signalKey],
+        target: f.threshold,
+        good: colonify(SIGNAL_GOOD[f.signalKey] ?? `Target: ${f.threshold}`),
+        impact:
+          explainer && explainer.overallPoints && explainer.overallPoints > 0
+            ? `Costs ${explainer.overallPoints.toFixed(1)} overall points`
+            : 'No score penalty',
       }
     })
 

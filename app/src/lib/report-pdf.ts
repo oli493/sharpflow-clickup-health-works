@@ -190,27 +190,97 @@ export async function buildReportPdf(result: ScanResult, opts: ReportPdfOptions 
   y -= 6
 
   rule()
+  sectionTitle('Why these scores')
+  for (const c of result.categories) {
+    const explainers = c.explainers ?? []
+    const bad = explainers.filter((e) => e.status === 'below' || e.status === 'above')
+    need(42)
+    page.drawText(c.name, { x: M, y: y - 12, size: 12, font: bold, color: GREEN })
+    page.drawText(`${c.score}/100`, { x: M + 250, y: y - 12, size: 11, font: bold, color: scoreColor(c.score) })
+    if (c.overallImpact != null && c.overallImpact > 0) {
+      page.drawText(`-${c.overallImpact.toFixed(1)} overall points`, { x: M + 310, y: y - 12, size: 8, font, color: MAGENTA })
+    }
+    y -= 18
+    for (const line of wrap(c.blurb, 8.2, font, CW)) {
+      page.drawText(line, { x: M, y: y - 8, size: 8.2, font, color: GREY })
+      y -= 10
+    }
+    y -= 2
+
+    for (const e of explainers) {
+      need(14)
+      const status =
+        e.status === 'within' ? 'Within target'
+          : e.status === 'below' ? 'Below target'
+            : e.status === 'above' ? 'Above target'
+              : e.status === 'not_measured' ? 'Not measured'
+                : 'Insight only'
+      page.drawText(e.name, { x: M + 10, y: y - 8, size: 8.2, font: bold, color: GREEN })
+      page.drawText(`${e.value}  vs  ${e.target}`, { x: M + 145, y: y - 8, size: 8, font, color: GREY })
+      page.drawText(status, { x: M + 330, y: y - 8, size: 8, font: e.status === 'within' ? font : bold, color: e.status === 'within' ? GREEN2 : MAGENTA })
+      if (e.categoryPoints > 0) {
+        page.drawText(`-${e.categoryPoints.toFixed(1)} pts`, { x: A4[0] - M - 46, y: y - 8, size: 7.8, font: bold, color: MAGENTA })
+      }
+      y -= 11
+
+      if (bad.includes(e)) {
+        for (const line of wrap(e.why, 7.6, font, CW - 20)) {
+          need(10)
+          page.drawText(line, { x: M + 10, y: y - 7, size: 7.6, font, color: GREY })
+          y -= 9
+        }
+        for (const line of wrap(`Good looks like: ${e.good}`, 7.4, italic, CW - 20)) {
+          need(10)
+          page.drawText(line, { x: M + 10, y: y - 7, size: 7.4, font: italic, color: GREEN2 })
+          y -= 9
+        }
+      }
+      y -= 2
+    }
+    y -= 6
+  }
+
+  rule()
   sectionTitle('Findings & recommendations')
   for (const f of result.findings) {
-    need(70)
     const color = SEV_COLOR[f.severity]
+    const explanationLines = wrap(f.explanation, 8.5, font, CW - 120)
+    const recommendationLines = wrap(`Recommendation: ${f.recommendation}`, 8.5, italic, CW - 120)
+    const targetLines = f.target ? wrap(`Target: ${f.target}`, 8.2, font, CW - 120) : []
+    const goodLines = f.good ? wrap(`What good looks like: ${f.good}`, 8.5, font, CW - 120) : []
+    const blockH = 42 + (explanationLines.length + recommendationLines.length + targetLines.length + goodLines.length) * 11 + 10
+    need(blockH)
     const startY = y
-    page.drawRectangle({ x: M, y: startY - 62, width: 3, height: 62, color })
+    page.drawRectangle({ x: M, y: startY - blockH, width: 3, height: blockH, color })
     page.drawText(f.metric, { x: M + 12, y: startY - 16, size: 12, font: bold, color })
     page.drawText(f.metricLabel, { x: M + 12, y: startY - 28, size: 8, font, color: GREY })
     page.drawText(f.title, { x: M + 110, y: startY - 15, size: 11, font: bold, color: GREEN })
-    page.drawText(`${f.category} · ${f.severity.toUpperCase()}`, { x: M + 110, y: startY - 28, size: 8, font, color })
+    page.drawText(`${f.category} | ${f.severity.toUpperCase()}${f.impact ? ` | ${f.impact}` : ''}`, { x: M + 110, y: startY - 28, size: 7.8, font, color })
     let ty = startY - 42
-    for (const line of wrap(f.explanation, 8.5, font, CW - 120)) {
+    for (const line of explanationLines) {
       page.drawText(line, { x: M + 110, y: ty, size: 8.5, font, color: GREY })
       ty -= 11
     }
-    for (const line of wrap(`Recommendation: ${f.recommendation}`, 8.5, italic, CW - 120)) {
+    for (const line of recommendationLines) {
       page.drawText(line, { x: M + 110, y: ty, size: 8.5, font: italic, color: GREEN2 })
       ty -= 11
     }
-    y = Math.min(startY - 62, ty) - 10
+    for (const line of targetLines) {
+      page.drawText(line, { x: M + 110, y: ty, size: 8.2, font, color: GREY })
+      ty -= 11
+    }
+    for (const line of goodLines) {
+      page.drawText(line, { x: M + 110, y: ty, size: 8.5, font, color: GREEN2 })
+      ty -= 11
+    }
+    y = startY - blockH - 10
   }
+
+  rule()
+  sectionTitle('How the score works')
+  para('Each category score is the weighted average of its signals. A signal outside target deducts points based on its severity and how far it is from target. Worse values scale up to 1.5 times the base penalty.', 8.8, GREY)
+  para('The overall score is the weighted average of the scored categories. Categories without enough measurable data are excluded rather than counted as perfect. Opportunity findings explain a gap but carry no score penalty.', 8.8, GREY)
+  para('The AI summary explains the result. It never calculates, changes or re-derives any score.', 8.8, GREY)
 
   rule()
   sectionTitle('Platform utilisation')

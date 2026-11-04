@@ -191,3 +191,56 @@ describe('adoption is scored once its signals are measurable', () => {
     expect(res.coverage.total).toBe(7)
   })
 })
+describe('signal-level explanation data', () => {
+  it('exposes every signal in every category', () => {
+    const res = evaluate(HEALTHY)
+    for (const cat of CATEGORIES) {
+      const scored = res.categories.find((c) => c.key === cat.key)!
+      expect(scored.signals).toHaveLength(cat.signals.length)
+    }
+  })
+
+  it('a healthy workspace has no points lost at signal level', () => {
+    const res = evaluate(HEALTHY)
+    for (const cat of res.categories) {
+      expect(cat.pointsLost).toBeCloseTo(0, 5)
+      for (const signal of cat.signals) {
+        if (signal.measured && !signal.insightOnly) expect(signal.pointsLost).toBeCloseTo(0, 5)
+      }
+    }
+  })
+
+  it('records the penalty and points lost for a bad signal without changing the score', () => {
+    const res = evaluate({ ...HEALTHY, overdueRate: 0.4 })
+    const operational = res.categories.find((c) => c.key === 'operational')!
+    const overdue = operational.signals.find((s) => s.signalKey === 'overdue_rate')!
+    expect(overdue.measured).toBe(true)
+    expect(overdue.severity).toBe('critical')
+    expect(overdue.penalty).toBeGreaterThan(0)
+    expect(overdue.pointsLost).toBeGreaterThan(0)
+    expect(operational.pointsLost).toBeGreaterThan(0)
+    expect(operational.score).toBeLessThan(100)
+  })
+
+  it('marks missing metrics as not measured and excludes them from category points', () => {
+    const res = evaluate({})
+    for (const cat of res.categories) {
+      for (const signal of cat.signals) {
+        if (!signal.insightOnly) {
+          expect(signal.measured).toBe(false)
+          expect(signal.pointsLost).toBe(0)
+        }
+      }
+    }
+  })
+
+  it('opportunity-only signals never lose points', () => {
+    const res = evaluate({ ...HEALTHY, timeTrackedPct: 0 })
+    const utilisation = res.categories.find((c) => c.key === 'utilisation')!
+    const time = utilisation.signals.find((s) => s.signalKey === 'time_tracking')!
+    expect(time.insightOnly).toBe(false)
+    expect(time.severity).toBe('opportunity')
+    expect(time.pointsLost).toBe(0)
+    expect(utilisation.score).toBe(100)
+  })
+})

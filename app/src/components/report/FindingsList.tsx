@@ -42,6 +42,11 @@ const FindingRow = forwardRef<
                 <span className="rounded-full px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest" style={{ background: sev.soft, color: sev.color }}>
                   {sev.label}
                 </span>
+                {finding.impact && (
+                  <span className="rounded-full bg-magenta/[0.08] px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-magenta">
+                    {finding.impact}
+                  </span>
+                )}
               </span>
               <span className="mt-1 block font-mono text-[11px] text-txt-faint">{finding.category}</span>
             </span>
@@ -64,8 +69,17 @@ const FindingRow = forwardRef<
                   <div className="font-mono text-[10px] text-txt-faint">{finding.metricLabel}</div>
                 </div>
                 <div>
-                  <div className="eyebrow mb-2">What we found</div>
+                  <div className="eyebrow mb-2">Why this is bad</div>
                   <p className="text-[13.5px] leading-relaxed text-txt-muted">{finding.explanation}</p>
+                  {finding.good && (
+                    <div className="mt-3 rounded-lg bg-brand-ink/[0.03] px-3 py-2.5">
+                      <div className="font-mono text-[9px] uppercase tracking-widest text-brand-glow">What good looks like</div>
+                      <p className="mt-1 text-[12px] leading-relaxed text-txt-muted">{finding.good}</p>
+                    </div>
+                  )}
+                  {finding.target && (
+                    <div className="mt-2 font-mono text-[10px] text-txt-faint">Target: {finding.target}</div>
+                  )}
                 </div>
                 <div>
                   <div className="eyebrow mb-2 text-magenta/80">Recommended action</div>
@@ -81,8 +95,7 @@ const FindingRow = forwardRef<
                       onClick={() => openDrill(finding.drill!)}
                       className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/[0.06] px-3.5 py-2 font-mono text-[10px] uppercase tracking-widest text-brand-glow transition-colors hover:bg-brand/10"
                     >
-                      View the items ▸
-                    </button>
+                      View the items -&gt;</button>
                   )}
                 </div>
               </div>
