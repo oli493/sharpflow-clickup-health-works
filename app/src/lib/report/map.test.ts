@@ -63,3 +63,11 @@ describe('why-score mapping', () => {
     expect(operational.explainers!.every((e) => e.status === 'not_measured')).toBe(true)
   })
 })
+  it('does not blame opportunity-only signals for a 100/100 category', () => {
+    const result = build({ timeTrackedPct: 0, viewsPerSpace: 5, dependenciesUsed: 10 })
+    const utilisation = result.categories.find((c) => c.key === 'utilisation')!
+    expect(utilisation.score).toBe(100)
+    expect(utilisation.blurb).not.toContain('main reason')
+    expect(utilisation.blurb).toContain('Opportunities')
+    expect(utilisation.explainers!.find((e) => e.key === 'time_tracking')!.categoryPoints).toBe(0)
+  })

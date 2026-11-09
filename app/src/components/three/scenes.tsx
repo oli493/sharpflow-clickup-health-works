@@ -131,33 +131,36 @@ export interface TopologySpace {
 }
 
 function buildGraph(spaces: TopologySpace[]) {
-  const nodes: Node[] = [{ pos: [0, 0, 0], size: 0.34, color: '#E01072', kind: 'hub' }]
-  const links: { a: THREE.Vector3; b: THREE.Vector3; strong: boolean }[] = []
-  const hub = new THREE.Vector3(0, 0, 0)
   const spaceCount = Math.max(1, spaces.length)
+  const hub = new THREE.Vector3(spaceCount === 1 ? -1.1 : 0, 0, 0)
+  const nodes: Node[] = [{ pos: [hub.x, hub.y, hub.z], size: 0.34, color: '#E01072', kind: 'hub' }]
+  const links: { a: THREE.Vector3; b: THREE.Vector3; strong: boolean }[] = []
+  const listTotal = spaces.reduce((sum, space) => sum + space.lists.length, 0)
+  const small = spaceCount <= 3 || listTotal <= 8
+  const radius = spaceCount === 1 ? 1.2 : spaceCount === 2 ? 2.2 : small ? 2.7 : spaceCount <= 5 ? 2.6 : 2.4
+  const ySpread = small ? 1 : 0.75
 
   spaces.forEach((space, i) => {
-    const angle = (i / spaceCount) * Math.PI * 2
-    const radius = 2.5
-    const y = Math.sin(i * 1.7) * 0.7
+    const angle = (i / spaceCount) * Math.PI * 2 + (small ? 0.08 : 0)
+    const y = spaceCount === 1 ? 0 : (i - (spaceCount - 1) / 2) * (2 * ySpread / (spaceCount - 1))
     const sp = new THREE.Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius)
     const color = space.health >= 0.75 ? '#7DE2B0' : space.health >= 0.55 ? '#FFD166' : '#FF9F45'
-    nodes.push({ pos: [sp.x, sp.y, sp.z], size: 0.2, color, kind: 'space', name: space.name })
+    nodes.push({ pos: [sp.x, sp.y, sp.z], size: small ? 0.24 : 0.2, color, kind: 'space', name: space.name })
     links.push({ a: hub, b: sp, strong: true })
 
     const listCount = Math.max(1, space.lists.length)
     space.lists.forEach((list, l) => {
-      const a2 = (l / listCount) * Math.PI * 2 + seeded(i * 7 + l) * 0.8
-      const r2 = 0.75 + seeded(i * 3 + l * 2) * 0.7
+      const a2 = (l / listCount) * Math.PI * 2 + seeded(i * 7 + l) * (small ? 0.35 : 0.8)
+      const r2 = (small ? 1.25 : 0.75) + seeded(i * 3 + l * 2) * (small ? 0.55 : 0.7)
       const lp = new THREE.Vector3(
         sp.x + Math.cos(a2) * r2,
-        sp.y + (seeded(i + l * 5) - 0.5) * 1.2,
+        sp.y + (seeded(i + l * 5) - 0.5) * (small ? 1.6 : 1.2),
         sp.z + Math.sin(a2) * r2,
       )
       const lh = list.health
       nodes.push({
         pos: [lp.x, lp.y, lp.z],
-        size: 0.055 + lh * 0.06,
+        size: (small ? 0.07 : 0.055) + lh * 0.06,
         color: lh >= 0.75 ? '#7DE2B0' : lh >= 0.5 ? '#FFD166' : '#FF5C6C',
         kind: 'list',
         name: space.name,

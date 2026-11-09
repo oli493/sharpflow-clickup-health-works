@@ -48,7 +48,7 @@ const BASE_MOCK_SCAN: ScanResult = {
     { key: 'adoption', name: 'Adoption & Activity', score: 79, scored: true, blurb: 'Most members are active, with a handful of quiet members and Spaces.', metrics: [
       { label: 'Active members', value: '34 / 42', tone: 'up' }, { label: 'Inactive members', value: '8', tone: 'down', drill: 'inactive-members' }, { label: 'Guests', value: '38%' } ] },
     { key: 'utilisation', name: 'Platform Utilisation', score: 57, scored: true, blurb: 'Several high-value ClickUp capabilities are enabled but barely used.', metrics: [
-      { label: 'Scored signals', value: '3', tone: 'down' }, { label: 'Time tracking', value: '6%', tone: 'down' }, { label: 'Views / Space', value: '1.8', tone: 'down' } ] },
+      { label: 'Scored signals', value: '3', tone: 'down' }, { label: 'Time tracking', value: '3%', tone: 'down' }, { label: 'Views / Space', value: '1.8', tone: 'down' } ] },
     { key: 'reporting', name: 'Reporting Readiness', score: 83, scored: true, blurb: 'Strong due-date and ownership coverage — reporting data is in good shape.', metrics: [
       { label: 'Due-date coverage', value: '91%', tone: 'up' }, { label: 'Ownership', value: '88%', tone: 'up' }, { label: 'Estimate coverage', value: '34%', tone: 'down' } ] },
   ],
@@ -60,7 +60,7 @@ const BASE_MOCK_SCAN: ScanResult = {
     { id: 'f-stale', title: 'Large stale backlog', category: 'Operational Health', severity: 'high', metric: '612', metricLabel: 'tasks untouched 90+ days', explanation: '612 open tasks have not been updated in over 90 days, and 2,140 in over 30 days, inflating WIP and skewing reporting.', recommendation: 'Introduce a 60-day stale rule that auto-flags old tasks for triage. Close or archive what is no longer relevant.', affected: '612 tasks', drill: 'stale-90' },
     { id: 'f-customfields', title: 'Custom Fields never filled', category: 'Data & Governance', severity: 'high', metric: '61', metricLabel: 'fields at 0% filled', explanation: '148 Custom Fields exist and 61 sit at 0% filled on the tasks where they apply. Average field completion is 43%, weakening reporting.', recommendation: 'Retire unused fields and make key fields required in the Spaces where they drive reporting.', affected: '61 fields', drill: 'custom-fields' },
     { id: 'f-undated', title: 'Tasks missing due dates or owners', category: 'Data & Governance', severity: 'medium', metric: '1,284', metricLabel: 'active tasks without a due date', explanation: '1,284 active tasks have no due date and 731 have no assignee, which undermines accountability and on-time reporting.', recommendation: 'Add an automation that flags new tasks without an owner or due date, and default due-date rules per List.', affected: '1,284 tasks', drill: 'missing-due' },
-    { id: 'f-timetracking', title: 'Time tracking enabled but unused', category: 'Platform Utilisation', severity: 'opportunity', metric: '6%', metricLabel: 'of tasks with any time logged', explanation: 'Time tracking is available across the workspace, but only 6% of tasks have time logged — capacity and forecasting data is unavailable.', recommendation: 'Roll out light time tracking on client-billable Lists only, so estimates and workload views become usable.' },
+    { id: 'f-timetracking', title: 'Time tracking enabled but unused', category: 'Platform Utilisation', severity: 'opportunity', metric: '3%', metricLabel: 'of tasks with any time logged', explanation: 'Time tracking is available across the workspace, but only 3% of tasks have time logged — capacity and forecasting data is unavailable.', recommendation: 'Roll out light time tracking on client-billable Lists only, so estimates and workload views become usable.' },
     { id: 'f-views', title: 'Views under-used', category: 'Platform Utilisation', severity: 'medium', metric: '1.8', metricLabel: 'Views per Space', explanation: 'Only ~1.8 saved views per Space exist, and 4 Spaces have no dashboard at all.', recommendation: 'Create one operational dashboard per Space for delivery, workload and overdue visibility.', affected: '4 Spaces without dashboards' },
     { id: 'f-quiet', title: 'Inactive members', category: 'Adoption & Activity', severity: 'medium', metric: '8', metricLabel: 'members inactive for 30d', explanation: '8 of 42 members (about 19%) have not created, completed or commented on work in 30 days. Roles are exposed by the API, not billing, so this is activity-based.', recommendation: 'Confirm whether these members still need access, or reduce their seat type.', affected: '8 members', drill: 'inactive-members' },
   ],
@@ -72,7 +72,7 @@ const BASE_MOCK_SCAN: ScanResult = {
   ],
   utilisation: [
     { capability: 'Views', status: 'detected', detail: '~1.8 views per Space' },
-    { capability: 'Time Tracking', status: 'detected', detail: 'Enabled, 6% of tasks logged' },
+    { capability: 'Time Tracking', status: 'detected', detail: 'Enabled, 3% of tasks logged' },
     { capability: 'Time Estimates', status: 'detected', detail: 'Present on 34% of tasks' },
     { capability: 'Time in Status', status: 'partial', detail: 'Requires ClickApp enabled' },
     { capability: 'Dependencies', status: 'detected', detail: '184 dependency links found' },
@@ -195,7 +195,7 @@ const MOCK_CATEGORY_BLURB: Record<string, string> = {
   governance: 'Data & Governance is 62/100. Low field completion and Custom Field sprawl are the main reasons it is not higher.',
   operational: 'Operational Health is 68/100. Overdue work and stale tasks are the main reasons it is not higher.',
   adoption: 'Adoption & Activity is 79/100. Inactive members and guest access are the main reasons it is not higher.',
-  utilisation: 'Platform Utilisation is 57/100. Few saved Views and low time tracking are the main reasons it is not higher.',
+  utilisation: 'Platform Utilisation is 57/100. Few saved Views is the main reason it is not higher.',
   reporting: 'Reporting Readiness is 83/100. Estimate coverage and workflow consistency are the main reasons it is not higher.',
 }
 

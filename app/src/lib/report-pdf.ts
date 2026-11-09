@@ -210,11 +210,12 @@ export async function buildReportPdf(result: ScanResult, opts: ReportPdfOptions 
     for (const e of explainers) {
       need(14)
       const status =
-        e.status === 'within' ? 'Within target'
-          : e.status === 'below' ? 'Below target'
-            : e.status === 'above' ? 'Above target'
-              : e.status === 'not_measured' ? 'Not measured'
-                : 'Insight only'
+        e.severity === 'opportunity' ? 'Opportunity'
+          : e.status === 'within' ? 'Within target'
+            : e.status === 'below' ? 'Below target'
+              : e.status === 'above' ? 'Above target'
+                : e.status === 'not_measured' ? 'Not measured'
+                  : 'Insight only'
       page.drawText(e.name, { x: M + 10, y: y - 8, size: 8.2, font: bold, color: GREEN })
       page.drawText(`${e.value}  vs  ${e.target}`, { x: M + 145, y: y - 8, size: 8, font, color: GREY })
       page.drawText(status, { x: M + 330, y: y - 8, size: 8, font: e.status === 'within' ? font : bold, color: e.status === 'within' ? GREEN2 : MAGENTA })

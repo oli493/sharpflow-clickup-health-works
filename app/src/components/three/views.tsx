@@ -39,8 +39,11 @@ export function TopologyView({
   onSelect?: (name: string) => void
   spaces?: TopologySpace[]
 }) {
+  const count = spaces?.length ?? 0
+  const z = count <= 1 ? 5.2 : count <= 3 ? 6.4 : 7
+
   return (
-    <Scene3D className={className} camera={{ position: [0, 1.2, 7], fov: 46 }} fallback={fallback}>
+    <Scene3D className={className} camera={{ position: [0, 1.2, z], fov: 46 }} fallback={fallback}>
       <TopologyGraph onSelect={onSelect} spaces={spaces} />
     </Scene3D>
   )

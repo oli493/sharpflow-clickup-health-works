@@ -227,10 +227,15 @@ function buildExplainer(
 
 function categorySummary(c: ScoreResult['categories'][number], explainers: SignalExplanation[]): string {
   if (!c.scored) return 'Not enough measurable data to score this category.'
+  const opportunities = explainers.filter((e) => e.severity === 'opportunity')
   const bad = explainers
-    .filter((e) => e.status === 'below' || e.status === 'above')
+    .filter((e) => (e.status === 'below' || e.status === 'above') && e.severity !== 'opportunity' && e.categoryPoints > 0)
     .sort((a, b) => b.categoryPoints - a.categoryPoints)
-  if (bad.length === 0) return 'Every measured signal in this category is within target.'
+  if (bad.length === 0) {
+    return opportunities.length > 0
+      ? `${c.name} is ${c.score}/100. Every scored signal is within target. Opportunities are shown separately and do not lower the score.`
+      : `${c.name} is ${c.score}/100. Every scored signal is within target.`
+  }
   const top = bad.slice(0, 2).map((e) => `${e.name} (${e.value} vs ${e.target})`)
   return `${c.name} is ${c.score}/100. ${top.join(' and ')} ${bad.length === 1 ? 'is' : 'are'} the main reason it is not higher.`
 }

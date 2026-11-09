@@ -176,7 +176,7 @@ export default function WhyScoreDrawer({
                   <div className="mt-1 text-[12px] text-txt-muted">Signals outside target first, healthy signals after.</div>
                 </div>
                 <span className="shrink-0 rounded-full border border-line px-3 py-1 font-mono text-[9px] uppercase tracking-widest text-txt-faint">
-                  {signals.filter((s) => s.status === 'below' || s.status === 'above').length} outside target
+                  {signals.filter((s) => (s.status === 'below' || s.status === 'above') && s.severity !== 'opportunity' && s.categoryPoints > 0).length} outside target
                 </span>
               </div>
 
