@@ -10,6 +10,11 @@ prioritised findings with recommendations, an AI executive summary, and a brande
 
 Scores come from a **deterministic scoring engine**; the AI only explains the results, it never sets them.
 
+**Phase 2 (4 Nov 2026):** the **"Why this score" explanation layer** is live — every category and
+signal explains its score (actual vs target, points impact, why it is bad, what good looks like) in the
+report, findings and PDF. The optional **Action Plan** is a PoC on `poc/phase-2-explanations` only and
+is not merged. See `HANDOFF.md` §22.
+
 ---
 
 ## Repository layout

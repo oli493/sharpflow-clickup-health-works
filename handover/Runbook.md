@@ -11,7 +11,7 @@ No secrets in this file — they live in `app/.env.local` (local) and the host e
 
 | Piece | What it does |
 |---|---|
-| **Next.js app** (`app/`) | Landing, ClickUp OAuth connect, workspace picker, scan progress, report dashboard, branded PDF, lead capture. |
+| **Next.js app** (`app/`) | Landing, ClickUp OAuth connect, workspace picker, scan progress, report dashboard, "Why this score" explanations, branded PDF, lead capture. |
 | **ClickUp API** | Read-only source of workspace data (workspaces, Spaces/Folders/Lists, tasks, custom fields, views, goals). |
 | **Supabase (Postgres)** | Stores connections (encrypted tokens), scans, findings, list stats, samples and leads. |
 | **Inngest** | Runs the background scan worker (`scan-workspace`) off the request path. |
@@ -125,8 +125,12 @@ measurable weight is excluded as "Not measured"); an "insufficient data" state f
 
 ## 8. Report, PDF & share images
 
+- **Explanations:** the "Why this score" layer is generated from the engine result (`ScanResult.explainers`)
+  and rendered in the report, findings, PDF and the public sample. It is deterministic and changes no
+  scores. Scans created before 4 Nov 2026 have no explainer data.
 - **PDF:** `app/src/lib/report-pdf.ts`, served at `GET /api/scans/[id]/report.pdf` (branded, uses
-  `public/brand/logo-wordmark.png` + `partner-badge.png`).
+  `public/brand/logo-wordmark.png` + `partner-badge.png`; includes category explanations, finding
+  targets and a methodology appendix).
 - **Sample report:** `/sample` renders the report with synthetic "Northwind Creative" data; its PDF is
   at `/api/sample/report.pdf`.
 - **Share (link-preview) images:**
@@ -156,6 +160,8 @@ needs a sending address/DNS record on the Sharpflow domain.)
 | **Link preview not updating** | Platforms cache previews — re-share the link (or append `?`) to refresh. |
 | **Connect fails / `?connect=error`** | Check `CLICKUP_REDIRECT_URI` matches the deployed callback and the ClickUp app's redirect URL. |
 | **AI summary missing** | Check `LLM_API_KEY` + `LLM_WORKSPACE_ID`; the report falls back to templated text if the call fails. |
+| **"Why this score" data missing** | The scan predates 4 Nov 2026 (no `explainers` in `result`). Run a new scan; no migration or env change is needed. |
+| **Main-site link preview still shows a globe** | `https://sharpflowconsulting.com/favicon.ico` returns 404. Set the favicon in Framer, publish, then re-add the link; if it still 404s, add a domain-level redirect. Owned by Bethany. |
 
 Logs: **Vercel → Project → Logs** (filter `/api/inngest`) and **app.inngest.com → Functions →
 scan-workspace → Runs**.
@@ -167,3 +173,6 @@ scan-workspace → Runs**.
 - **Client:** Oli Walker — Sharpflow Consulting.
 - **Repo:** https://github.com/oli493/sharpflow-clickup-health-works (currently public).
 - **Supabase:** project `iijehqonmdfhsutkbwsz` · **Vercel** + **Inngest Cloud** hold the production env.
+- **Phase 2 documents:** `..\Sharpflow-SOW-Phase-2.pdf` and `..\Sharpflow-Action-Plan-Feature.pdf` are
+  commercial documents kept **outside** the repo. The Action Plan lives only on
+  `poc/phase-2-explanations`; do not merge it without a funded scope.

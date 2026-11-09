@@ -1,6 +1,6 @@
 # Scanning changelog
 
-## v1.1 Ã¢â‚¬â€ scanner correctness
+## v1.1 — scanner correctness
 
 Branch: `fix/scanner-correctness`
 
@@ -14,10 +14,10 @@ Corrects the data collection layer without changing the agreed scoring model.
 - New/empty Lists and Spaces are no longer counted as dormant 90d+.
 - Distinct workflows are counted from unique status signatures, not Space count.
 - Unused statuses and statuses-per-workflow are calculated per workflow.
-- Custom-field bloat and Ã¢â‚¬Å“0% filledÃ¢â‚¬Â include configured fields that never appear on a task.
+- Custom-field bloat and "0% filled" include configured fields that never appear on a task.
 - Comment frequency is sampled across Lists and filtered to the last 30 days.
 - Activity concentration uses recent activity, not historical task volume.
-- Time tracking uses workspace time entries for the last 90 days; falls back to Ã¢â‚¬Å“any time loggedÃ¢â‚¬Â
+- Time tracking uses workspace time entries for the last 90 days; falls back to "any time logged"
   with an explicit label.
 - Partial failures are recorded. Material missing data fails the scan instead of publishing a
   misleading score.
@@ -39,13 +39,13 @@ Every change should be explainable by one of the fixes above.
 ### Validation
 
 - `npm run typecheck`
-- `npm test` Ã¢â‚¬â€ 56 passing, 1 validation test skipped by default
+- `npm test` — 69 passing + 1 opt-in validation test skipped (as of 4 Nov 2026)
 - `npm run build`
 - Real-workspace run on **Eyes On** (383 Lists, 81,346 tasks):
-  - baseline **76 (B)** Ã¢â€ â€™ branch **75 (B)**
+  - baseline **76 (B)** → branch **75 (B)**
   - full coverage, 383/383 Lists, 0 failures, 31/32 signals
-  - Architecture 87 Ã¢â€ â€™ 88 (dormant fix)
-  - Reporting 48 Ã¢â€ â€™ 45 (open-task due-date coverage is genuinely lower than
+  - Architecture 87 → 88 (dormant fix)
+  - Reporting 48 → 45 (open-task due-date coverage is genuinely lower than
     the old all-task number)
   - Workflow restored to 100 after reporting the worst workflow instead of
     summing unused statuses across workflows
@@ -59,7 +59,8 @@ Every change should be explainable by one of the fixes above.
 ### Not included
 
 - Production environment, domain, key rotation or database migrations.
-## v1.2 - scan throughput
+
+## v1.2 — scan throughput
 
 Branch: `perf/scan-throughput`
 
@@ -84,7 +85,8 @@ The memory-safe version stays well under 2 GB.
 Live validation after merge and Inngest resync: **~10.5 minutes**, score **75/100 (B)**,
 382/382 Lists, 81,357 tasks, peak heap **511 MB** on 2 GB, 0 failed, 0 truncated.
 Report, PDF and all repaired drill-downs verified; the test scan and child rows were deleted.
-## v1.3 - scanner tuning
+
+## v1.3 — scanner tuning
 
 Branch: `perf/scan-tuning`
 
@@ -95,6 +97,23 @@ Branch: `perf/scan-tuning`
 - No 429s and no retries
 - 4 x 8 was slower (8.8 min); 6 x 4 was slower (10.4 min)
 - No 4 GB upgrade required
-Live validation of v1.4: **~9.6 minutes**, score **75/100 (B)**, 382/382 Lists,
-81,357 tasks, peak heap **628 MB** on 2 GB, 0 failed, 0 truncated.
-Report, PDF and all repaired drill-downs verified; the test scan and child rows were deleted.
+
+## v1.4 — live validation
+
+- Live Eyes On scan completed in **~9.6 minutes**
+- Score **75/100 (B)**, 382/382 Lists, 81,357 tasks, peak heap **628 MB** on the 2 GB plan
+- 0 failed, 0 truncated
+- Report, PDF and all repaired drill-downs verified; the test scan and child rows were deleted
+
+## v1.5 — score explanations (report layer, no scanner change)
+
+Shipped to production **4 Nov 2026** (`main` @ `8fd6acf`).
+
+- Every category and signal now exposes a deterministic explanation: actual value vs client-facing
+  target, status, points impact (category and overall), why it is bad, what good looks like, affected
+  item count and a drill-down link.
+- The same data appears on findings and in the PDF, plus a "How the score works" methodology appendix.
+- Implemented in `app/src/lib/scoring/engine.ts`, `scoring/copy.ts`, `report/map.ts`, `report-pdf.ts`
+  and `components/report/WhyScoreDrawer.tsx`.
+- **No change to the scanner, scoring model, weights, thresholds or score numbers.**
+- Scans created before this layer show no explainer data (by design).

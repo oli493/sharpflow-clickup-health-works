@@ -65,8 +65,20 @@ Sharpflow's pipeline. It is not sold per-seat.
 > Since handover, a few extras were added at no charge — a public **sample report** (`/sample`),
 > **social share preview cards**, a branded **link-preview image**, a **lead-magnet playbook**, and
 > hardening of the scan worker so very large workspaces complete reliably.
+>
+> **Phase 2 update (4 Nov 2026):** the "Why this score" explanation layer is **delivered and live**
+> in production. The optional Action Plan remains a PoC only.
 
-### Phase 2 (out of scope for the MVP — quoted separately)
+### Phase 2 — score explanations (delivered 4 Nov 2026)
+**Scope A — "Why this score" (shipped):** every category and signal explains its score in the report,
+findings and PDF — actual vs target, points impact, why it is bad, what good looks like, affected items
+and drill-downs, plus a methodology appendix. The scoring model is unchanged.
+
+**Scope B — Action Plan (PoC, not funded/merged):** top-5 actions ranked deterministically, split into
+quick wins vs consulting projects, with effort, impact, a branded PDF page and a "Book a call" CTA.
+Lives only on `poc/phase-2-explanations`. Reuses the existing scan/scoring; no new ClickUp permissions.
+
+### Longer-term roadmap (out of scope for the MVP — quoted separately)
 Recurring/scheduled scans, historical score tracking, continuous monitoring, benchmarking, alerts,
 subscription plans, advanced reporting, additional AI functionality, connectors beyond ClickUp + LLM.
 
@@ -98,6 +110,9 @@ subscription plans, advanced reporting, additional AI functionality, connectors 
 - Sharpflow wordmark (dark green "Sharp" + "flow" in a dark-green box, lime text).
 - Sharpflow mark (lime "S" flow on dark green).
 - **ClickUp Diamond Partner 2026 badge** — displayed as a trust signal (lead-capture panel).
+  **Naming note:** Oli's wording is "Diamond partner" (7 Oct 2026); the original uploaded asset was
+  named `2026-ClickUp-Sapphire-Partner-Badge.png`. Use **Diamond** in client-facing copy; the filename
+  may still say Sapphire. Do not treat this as an outstanding product bug.
 - ClickUp brand assets used only for the partner/badge context (https://clickup.com/brand); note ClickUp's own fonts differ (Plus Jakarta Sans / Inter / Sometype Mono) and are **not** used for the product UI.
 
 **Reference:** https://sharpflowconsulting.com · Brand guidelines: Canva (sharpflow)
@@ -120,8 +135,11 @@ subscription plans, advanced reporting, additional AI functionality, connectors 
 - **Areas performing well** (positive section).
 - **Platform Utilisation** matrix (detected / partial / not measurable — honest about the API).
 - **AI executive summary** (streaming, grounded in the engine).
+- **"Why this score" explanations** — a drawer on every category card, with each signal's actual value
+  vs target, points impact, why it is bad and what good looks like. The same detail appears on findings
+  and in the PDF.
 - **Configurable rules & thresholds** engine.
-- **Branded PDF export**.
+- **Branded PDF export** — includes category explanations, finding targets and a methodology appendix.
 - **Public sample report** (`/sample`) so prospects can preview before connecting.
 - **Social share preview cards** — shared report links unfurl with the score; the landing page uses a Sharpflow brand image.
 
@@ -234,6 +252,18 @@ Feasibility: **✓** measurable · **~** partial/conditional · **✕** not expo
 > (removed from Operational Health and Platform Utilisation to avoid double-counting). Weights for the
 > three new signals were set by us and other signals in those categories rebalanced to keep totals at 100%.
 
+### Explanation layer (derived, never scored)
+
+The "Why this score" layer is computed **from** the engine result; it does not change the model:
+
+- Each category exposes a score, band, overall points impact and a plain-English blurb.
+- Each signal exposes actual vs target, status (within / below / above / insight / not measured), the
+  points it costs its category and the overall score, why it is bad, what good looks like, affected
+  items and a drill-down link.
+- Findings and the PDF reuse the same `ScanResult.explainers`; the PDF adds a methodology appendix.
+- Weights, thresholds, severities and score numbers are **identical** to §9 above.
+- Scans created before this layer simply show no explainer data.
+
 ### Correctness amendments (v1.1, branch `fix/scanner-correctness`)
 
 These correct the implementation without changing the agreed model:
@@ -299,6 +329,8 @@ token management, permissions, missing data.
 ## 11. Lead capture
 
 - Email capture on the results ("Email me the report").
+- **Status:** the lead is captured and created in the CRM, but the PDF is **not emailed yet** — that
+  needs a sending address/DNS record on the Sharpflow domain (Resend), which is still outstanding.
 - Primary CTA: **"Book a call with Sharpflow"**.
 - Diamond Partner badge as a trust signal (transparent PNG).
 
@@ -358,6 +390,18 @@ Git is initialised locally and pushed to the Sharpflow GitHub repo (`oli493/shar
 
 (Fixed price $400; offer accepted 04 Oct 2026.)
 
+**Phase 2 (post-MVP, fixed-fee, agreed in Upwork chat — not in the SOW):**
+
+| Scope | Amount | Status |
+| --- | --- | --- |
+| A — "Why this score" explanation layer | $150 | Paid / shipped 4 Nov 2026 |
+| B — Action Plan (add-on) | $150 | Not funded; PoC only |
+| A + B bundle | $300 | Option offered |
+| Loyalty credit | −$150 | Off any future phase above $150 |
+
+> The SOW (`..\Sharpflow-SOW-Phase-2.pdf`, external, not committed) deliberately says "commercials to
+> be agreed after scope sign-off"; the figures above come from the Upwork conversation.
+
 ---
 
 ## 15. Open questions / decisions
@@ -372,6 +416,13 @@ Git is initialised locally and pushed to the Sharpflow GitHub repo (`oli493/shar
 - [x] Domain — `health.sharpflowconsulting.com` — **live**.
 - [x] Test workspace access (for live validation) — **done** (real workspaces connected and scanned).
 - [x] PDF export — **branded, live**.
+- [x] "Why this score" explanation layer — **built and live** (4 Nov 2026); see §5 and §9.
+- [ ] **Action Plan** — PoC on `poc/phase-2-explanations`; not funded or merged ($150).
+- [ ] **Main-site favicon** — `https://sharpflowconsulting.com/favicon.ico` is **404** (confirmed
+      4 Nov 2026); needs a Framer publish (Bethany), plus a possible domain-level redirect.
+- [ ] **Team usage tracking** — Oli asked who on his team uses it; needs scoping (visits, connect
+      attempts, scans by account).
+- [ ] **Integrations** — Oli asked about linking systems; no systems named yet.
 - [ ] **Report email** — actually emailing the report needs a sending address on the Sharpflow domain (pending DNS/provider).
 - [ ] **Repo visibility** — the GitHub repo is public; making it private is an owner-only step.
 
@@ -388,4 +439,7 @@ Git is initialised locally and pushed to the Sharpflow GitHub repo (`oli493/shar
 - **`prototype/docs/scoring-answers.json`** — Oli's answers as data (source of truth for the engine config).
 - **CTA link** — the "Book a call" button points to the Calendly link: `https://calendly.com/oli-sharpflowconsulting/clickup-health-discussion`.
 - **Brand assets** — `public/brand/` (`logo-wordmark.png`, `logo-mark.jpg`, `partner-badge.png`).
+- **Phase 2 SOW (external, not committed)** — `..\Sharpflow-SOW-Phase-2.pdf`.
+- **Action Plan feature proposal (external, not committed)** — `..\Sharpflow-Action-Plan-Feature.pdf`.
+  These are commercial documents for Oli; they deliberately stay outside the repository.
 

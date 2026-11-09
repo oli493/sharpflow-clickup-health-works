@@ -8,7 +8,7 @@
 > **No secret values are in this file.** Credentials live in `app/.env.local` (gitignored) and the
 > host/platform settings. See §13.
 
-Last updated: 26 Oct 2026 · branch `fix/scanner-correctness` (based on `4b218f1`)
+Last updated: 4 Nov 2026 · branch `main` @ `8fd6acf`
 
 ---
 
@@ -21,9 +21,14 @@ Last updated: 26 Oct 2026 · branch `fix/scanner-correctness` (based on `4b218f1
 - **Where we are:** **deployed and live** at **https://health.sharpflowconsulting.com** (Vercel
   tracks `main` → every push auto-deploys). The full flow works in production: connect → workspace
   picker → background scan → report → branded PDF → lead capture. AI summary live (Claude Haiku 4.5).
-- **Blockers:** none. The only outstanding freebie is *emailed* reports, which needs a sending
-  address / DNS record on the Sharpflow domain.
-- **Next:** (optional) report email; Phase 2 roadmap — see §5 (scope) and §20 (post-launch changes).
+- **Phase 2:** the **"Why this score" explanation layer shipped to production on 4 Nov 2026**
+  (commit `8fd6acf`). Every category and signal now explains the score in the report, findings and
+  PDF. The optional **Action Plan** was built as a PoC but is **not funded and not merged**. See §22.
+- **Blockers:** none. Outstanding items are client-side or optional: the main-site favicon (404 on
+  `sharpflowconsulting.com`), *emailed* reports (needs a sending address / DNS record), team usage
+  tracking, and the deferred Action Plan.
+- **Next:** favicon follow-up with Bethany; scope usage tracking; Action Plan if funded; report
+  email; integrations conversation — see §14.
 
 ---
 
@@ -58,7 +63,7 @@ Last updated: 26 Oct 2026 · branch `fix/scanner-correctness` (based on `4b218f1
 | Oct 3 | Misho applied; Oli sent the full MVP spec (ClickUp doc) and asked to confirm feasibility within the quoted rate. |
 | Oct 3 | Misho sent a **proposal draft** (honest API-feasibility + scope). Oli replied warmly, clarified the freebie model. |
 | Oct 3 | Misho **built a branded Vite prototype** and sent a walkthrough video. Oli: *"That looks awesome."* Asked for **full branding** and **card drill-down**. |
-| Oct 3 | Misho sent the Canva brand info; Oli sent **fonts, logos, Sapphire badge, gradients**. |
+| Oct 3 | Misho sent the Canva brand info; Oli sent **fonts, logos, partner badge, gradients**. |
 | Oct 4 | Misho sent an updated, fully-branded walkthrough. Oli: *"I love the branding."* |
 | Oct 4 | **Oli sent the offer** ($400, two $200 milestones). **Misho accepted.** |
 | Oct 4 | Oli: *"I won't have you do any more work for free."* Confirmed freebie model. |
@@ -68,6 +73,15 @@ Last updated: 26 Oct 2026 · branch `fix/scanner-correctness` (based on `4b218f1
 | Oct 5 | Oli asked which AI to use; Misho recommended **Claude**. Oli chose the **paid** hosting stack ("crème de la crème") for reliability, then upgraded Vercel to Pro + Supabase to Pro. |
 | Oct 5 | Misho wired Supabase schema, ran the **first real scan** (dev token). Calibrated the scoring engine (see §19). |
 | Oct 6 | Misho wrote this handoff doc. |
+| Oct 7 | **App live** on `health.sharpflowconsulting.com`; first milestone paid, second funded; Oli starts real-workspace QA. |
+| Oct 8–11 | Freebies added: sample report, OG share cards, lead-magnet playbook, docs/runbook. Email-report freebie blocked on Resend DNS. |
+| Oct 15–23 | Bethany receives Resend/DNS instructions; no confirmation they were applied. |
+| Oct 26 | Scanner correctness v1.1 validated on **Eyes On** (383 Lists, 81,346 tasks). Oli: "Lets go live". |
+| Oct 27 | Scanner speed v1.2–v1.4: ~9.6 min, 628 MB peak, full coverage. |
+| Oct 30 | Phase 2 scoped: **$150** "Why this score", **+$150** Action Plan. SOW PDF sent (external, not committed). |
+| Nov 1 | Action Plan PoC delivered on `poc/phase-2-explanations` (preview only). |
+| Nov 3 | Oli approves the explanation layer; Anthropic key rotated and verified end-to-end. |
+| Nov 4 | Explanation layer built, reviewed, merged and live; 6-page PDF verified; `main` @ `8fd6acf`. |
 
 ---
 
@@ -89,7 +103,12 @@ Last updated: 26 Oct 2026 · branch `fix/scanner-correctness` (based on `4b218f1
 - **Remote (GitHub):** https://github.com/oli493/sharpflow-clickup-health-works
   - Owner `oli493` = Oli's **personal** GitHub account. Repo is **PUBLIC** (Oli's choice).
   - Misho is a **collaborator**; pushes over HTTPS with cached creds.
-- **Branch:** `main` · **remote:** `origin` · working tree clean.
+- **Branch:** `main` @ `8fd6acf` · **remote:** `origin` · working tree clean.
+- **Branches:** `fix/scanner-correctness`, `perf/scan-throughput`, `perf/scan-tuning`,
+  `feat/score-explanations` and `fix/link-icon` are **merged** into `main`.
+  `poc/phase-2-explanations` is **unmerged** (Action Plan PoC, preview only).
+- ⚠️ `..\sharpflow-clickup-health-works\` is a **stale duplicate clone** (HEAD `74a476b`, 26 Oct).
+  Do all work in `sharpflow-health-demo\`.
 - **Structure (monorepo):**
   ```
   sharpflow-health-demo/
@@ -124,6 +143,10 @@ Last updated: 26 Oct 2026 · branch `fix/scanner-correctness` (based on `4b218f1
   4f32415  fix: record failed scans directly (try/catch)
   74a476b  chore: raise list coverage cap to 1000
   dcce457  feat: use Sharpflow brand card as the landing link-preview image
+  ...     (Oct 27–Nov 4: scanner v1.2–v1.4, favicon, score explanations — see §21–§22)
+  fed3545 Merge score explanations and PDF detail
+  3414d8c fix: show client-facing targets in score explanations
+  8fd6acf fix: apply client-facing targets to mapped explanations   ← main HEAD
   ```
 
 ---
@@ -148,7 +171,11 @@ wash** (off-white + mint + rose), (2) **green→lime** gradient for hero/report 
 
 **Assets (in `prototype/public/brand/` and `app/public/brand/`):**
 `logo-mark.jpg` (green square + lime arrow), `logo-wordmark.png` (horizontal "Sharpflow"),
-`partner-badge.png` (ClickUp **Sapphire** Partner 2026 — displayed in the lead-capture panel + footer).
+`partner-badge.png` (ClickUp **Diamond** Partner 2026 — displayed in the lead-capture panel + footer).
+
+> **Badge naming:** Oli's wording is "Diamond partner" (7 Oct). The original upload file was named
+> `2026-ClickUp-Sapphire-Partner-Badge.png`, which is where the older "Sapphire" references came from.
+> Treat **Diamond** as correct for client-facing copy; the asset filename may still say Sapphire.
 
 **Reference site:** https://sharpflowconsulting.com (light theme — the app mirrors it).
 
@@ -174,7 +201,7 @@ React Three Fiber (`three`, `@react-three/fiber`, `@react-three/drei`).
    - `FindingsList` (severity, filters, expand, "View the items")
    - `PerformingWell`, `UtilisationMatrix`
    - `ExecutiveSummary` (streaming text), `RulesTeaser`
-   - `LeadCapture` (email + **Calendly CTA** + Sapphire badge)
+   - `LeadCapture` (email + **Calendly CTA** + Diamond badge)
    - `PdfPreview` (branded report preview modal)
 
 **Other prototype files:** `src/lib/{motion,format,useTilt,useScrollSpy,useCountUp}.ts`, `src/components/ui.tsx`,
@@ -201,7 +228,9 @@ pdf-lib (PDF), Anthropic Claude (summaries), zod (validation), vitest (tests).
 | `/` | `app/src/app/page.tsx` | Landing + **Connect ClickUp** (OAuth) + dev-only **Connect with personal token** |
 | `/workspaces` | `workspaces/page.tsx` | Real workspace picker (from the connection) + exclude Spaces + **Run audit** |
 | `/scan/[id]` | `scan/[id]/page.tsx` | Live progress (polls `/api/scans/[id]`) → redirects to report |
-| `/report/[id]` | `report/[id]/page.tsx` | Full dashboard (same components as the prototype, prop-driven) |
+| `/report/[id]` | `report/[id]/page.tsx` | Full dashboard (same components as the prototype, prop-driven) + **Why this score** drawer |
+| `/sample` | `sample/page.tsx` | Public sample report (synthetic "Northwind Creative" data) with the explanation layer |
+| `/poc` | `poc/page.tsx` | **Not on `main`** — Action Plan PoC only on `poc/phase-2-explanations` |
 
 **API routes** (`app/src/app/api/…`)
 | Method | Route | Does |
@@ -210,10 +239,14 @@ pdf-lib (PDF), Anthropic Claude (summaries), zod (validation), vitest (tests).
 | GET | `/api/clickup/callback` | Exchange code → token, encrypt, store `connection`, redirect to `/workspaces` |
 | GET | `/api/clickup/dev-connect` | **DEV-ONLY** (404 in production): uses `DEV_CLICKUP_TOKEN` to create a connection (OAuth workaround) |
 | GET | `/api/connections/[id]` | Connection summary + workspaces |
+| GET | `/api/connections/[id]/workspaces` | Readable workspace list for the picker |
+| GET | `/api/connections/[id]/spaces` | Spaces for the exclude-Spaces step |
 | POST | `/api/scans` | Create scan row + fire Inngest `scan/requested` → `{ id }` |
 | GET | `/api/scans/[id]` | Status + progress + stage + `result` |
+| GET | `/api/scans/[id]/structure` | Topology/structure data for the report graph |
 | GET | `/api/scans/[id]/drill/[key]` | Drill-down rows (from `list_stats` / `scan_samples`; supports `space:<name>`) |
-| GET | `/api/scans/[id]/report.pdf` | Server-generated branded PDF (`application/pdf`) |
+| GET | `/api/scans/[id]/report.pdf` | Server-generated branded PDF (`application/pdf`) + explanation sections |
+| GET | `/api/sample/report.pdf` | Public sample-report PDF |
 | GET | `/api/scans/[id]/summary` | AI executive summary (stored on the scan; template fallback) |
 | POST | `/api/leads` | Store lead + optional `LEAD_CAPTURE_WEBHOOK` |
 | POST | `/api/inngest` | Inngest serve endpoint (syncs the `scan/requested` function) |
@@ -229,21 +262,32 @@ pdf-lib (PDF), Anthropic Claude (summaries), zod (validation), vitest (tests).
 - `scoring/model.ts` — **Oli's model as data** (categories, signals, weights, thresholds, severities).
 - `scoring/engine.ts` — deterministic metrics → findings → category scores → overall (+ coverage rule).
 - `scoring/copy.ts` — templated explanation/recommendation per signal + category blurbs.
-- `report/map.ts` — engine result + metrics + utilisation → the UI `ScanResult` model.
-- `report-pdf.ts` — server PDF from a `ScanResult`.
+- `report/map.ts` — engine result + metrics + utilisation → the UI `ScanResult` model, including
+  client-facing targets and `explainers`.
+- `report-pdf.ts` — server PDF from a `ScanResult`, including per-category and per-signal explanations.
 - `llm.ts` — Anthropic Claude call for the executive summary (grounded; never scores).
-- `types.ts` — shared types (`ScanResult`, `ScanStatus`, `DrillDataset`, `CategoryResult`, …).
+- `types.ts` — shared types (`ScanResult`, `ScanStatus`, `DrillDataset`, `CategoryResult`,
+  `SignalExplanation`, …).
 - `api.ts` — typed fetchers; `IS_MOCK` switches mock vs real.
-- `mock/scan.ts` — full sample scan + drill datasets (mock mode).
+- `mock/scan.ts` — full sample scan + drill datasets (mock mode), with explanation data.
 - `drill.ts` — drill dataset metadata (titles/columns).
+- `scan/{tasks,concurrency,metrics}.ts` — paginated task scanning, rate governor + bounded
+  concurrency, and metric derivation.
+- `og.tsx` — dynamic OG/score share cards (`next/og`).
+- `text.ts` — copy/text helpers (e.g. removing em dashes).
 
 **Background scan** (`app/src/inngest/scan.ts`) — steps: mark running → load connection → load
 structure → scan tasks → progress updates → evaluate → `toScanResult` → **AI summary** → store
 `list_stats` + `scan_samples` → store results. It writes `scans.progress/stage/result`, `findings`,
 `list_stats` (all lists) and `scan_samples` (≤100 rows per dataset: overdue/stale/missing-due).
 
-**Tests** (`app`): `src/lib/scoring/engine.test.ts` + `src/lib/report-pdf.test.ts` → **11 passing**
-(`npm test`).
+**Tests** (`app`): 6 suites (scoring engine, report mapping, report PDF, drill, scan metrics,
+scan concurrency) → **69 passing, 1 skipped** on 4 Nov 2026 (`npm test`). The skipped test is the
+opt-in real-workspace validation (`npm run validate:scan`).
+
+**Explanation components** (`app/src/components/report/`): `WhyScoreDrawer.tsx` renders the
+per-category and per-signal "Why this score" drawer; `CategoryCards.tsx`, `FindingsList.tsx`,
+`ReportView.tsx` and `PdfPreview.tsx` surface the same data in-page and in the PDF.
 
 **Dependencies pinned:** see `app/package.json` (next ^14.2.15, react ^18.3.1, framer-motion ^11.5.4,
 three ^0.169.0, @react-three/fiber ^8.17.10, @react-three/drei ^9.114.0, @supabase/supabase-js ^2.45.4,
@@ -374,6 +418,17 @@ commented in 30 days.
   otherwise it is **excluded from the overall** and shown as **"Not measured"** (surfaced as
   `coverage.scored / coverage.total`).
 
+**Explanation layer (Phase 2, shipped 4 Nov 2026):** every category and every signal now carries a
+deterministic explanation derived from the same engine result:
+- **Category:** score, band, overall points impact, and a plain-English blurb.
+- **Signal:** actual value vs client-facing target, status (within / below / above / insight / not
+  measured), the points it costs the category and the overall score, "why this is bad" and
+  "what good looks like", plus the affected-item count and a drill-down link.
+- **Findings and PDF:** the same detail, plus a short "How the score works" methodology appendix.
+- **Invariant:** the scoring model, weights, thresholds and score numbers are **unchanged**. This is a
+  presentation layer only (`ScanResult.explainers`), with no AI involvement.
+- **Backwards compatibility:** scans created before the layer simply show no explainer data.
+
 **AI:** the LLM only writes the executive summary (grounded, no invented numbers); it never computes
 scores. Model: `claude-haiku-4-5-20251001` (Claude Haiku 4.5 — the old `claude-3-5-haiku-latest`
 alias is retired and returns 404).
@@ -443,7 +498,12 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 ## 13. Verified state / real results
 
 **Live:** https://health.sharpflowconsulting.com · sample report at `/sample`.
-- `app` **`npm test`** → **26/26 pass** (scoring engine + PDF). **`tsc`** clean. **`next build`** clean.
+- `app` **`npm test`** → **69 passed, 1 skipped** (6 suites; the skip is the opt-in real-workspace
+  validation). **`tsc`** clean. **`next build`** clean.
+- **Production HEAD:** `8fd6acf` (4 Nov 2026) — matches `origin/main`. The live `/sample` page includes
+  the explanation layer.
+- **Phase 2 validation:** real workspace `Indico Data` (90 Lists, 8,367 tasks) produced a 6-page PDF
+  with category and signal explanations; the test scan was deleted afterwards.
 - **Schema** applied and reachable (REST 200 on all tables).
 - **PDF** route returns HTTP 200, `application/pdf` (~450 KB for a real report).
 - **Real end-to-end scans in production** (Vercel + Inngest Cloud), e.g.:
@@ -464,18 +524,30 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 - ✅ **Deployed** to Vercel + Supabase + Inngest Cloud — live on `health.sharpflowconsulting.com`.
 - ✅ **Lead capture wired** → Sharpflow's ClickUp CRM (Sales Pipeline list).
 - ✅ Scan worker hardened for very large workspaces (chunked steps, request timeouts, failure recording).
+- ✅ Scanner correctness v1.1 + speed v1.2–v1.4 (full coverage; Eyes On ~9.6 min, 628 MB peak).
+- ✅ **"Why this score" explanation layer** — live in the report, findings and PDF (4 Nov 2026).
 
-**Remaining**
+**Remaining / open**
+- **Favicon on the main marketing site:** `https://sharpflowconsulting.com/favicon.ico` returns **404**
+  (confirmed 4 Nov 2026); the health app's favicon works. Fix is on the Framer site (Bethany), plus a
+  possible domain-level redirect. This is the last item Oli raised.
+- **Team usage tracking:** Oli asked who on his team is using it; offered but **not scoped or priced**.
+- **Action Plan (Scope B):** built as a PoC on `poc/phase-2-explanations`, **not funded or merged**
+  (quoted at $150, or $300 bundled with the explanation layer).
+- **Integrations:** Oli asked about linking systems; no systems named yet.
 - **Report email (optional freebie):** the "Email me the report" button captions the send but does not
   yet deliver the PDF — needs a sending address / DNS record on the Sharpflow domain (Resend + 2 DNS
-  records, or an app password on Oli's mailbox).
+  records, or an app password on Oli's mailbox). Bethany was sent instructions on 15 Oct; no
+  confirmation they were applied.
 - **`avgTimeInStatusDays`** unmeasured (needs the Time in Status ClickApp) — left `undefined` so the
   coverage rule handles it.
 - **Docs** utilisation stays "not measurable" (the Docs API is v3-only).
 
 **Housekeeping**
 - The GitHub repo is **public** — consider making it private (owner-only).
-- The ClickUp **client secret** and Anthropic key were shared in chat → consider rotating.
+- The ClickUp **client secret** and Anthropic key were shared in chat. The Anthropic key was rotated
+  and verified on 3 Nov 2026; **rotate the ClickUp client secret** if that has not been done.
+- The stale duplicate clone at `..\sharpflow-clickup-health-works\` should be deleted or ignored.
 
 ---
 
@@ -486,6 +558,11 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 - **Anthropic workspace id** — ✅ done (`LLM_WORKSPACE_ID` set; AI summary live).
 - **Domain** — ✅ done (`health.sharpflowconsulting.com` live).
 - **Production redirect URL** on the ClickUp app — ✅ done.
+- **Main-site favicon (Framer):** upload a 512×512 PNG in Framer → Site Settings → General → Favicon,
+  publish, then confirm `https://sharpflowconsulting.com/favicon.ico` loads. If it still 404s, add a
+  domain-level redirect from `/favicon.ico`. Owned by **Bethany**.
+- **Usage-tracking decision:** confirm whether Oli wants visits, connect attempts and scans by account
+  (beyond the current connections/completed-scans count).
 - **[Optional]** a sending address / DNS record on the Sharpflow domain to switch on **emailed reports**.
 
 ---
@@ -493,7 +570,7 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 ## 16. Gotchas & conventions (important)
 
 - ⚠️ **Never edit UTF-8 files with PowerShell `Get-Content`/`Set-Content`** — it mangles em dashes /
-  arrows into `�?"`. Use the editor/edit tool. (This caused two corruption incidents.)
+  arrows into replacement characters. Use the editor/edit tool. (This caused two corruption incidents.)
 - ⚠️ **Don't run `next build` while `next dev` is running** — it clobbers `.next` and 404s the dev
   server. Restart `next dev` after a build.
 - **Browser automation:** agent-browser `click` via refs / `find … click` is flaky for some buttons
@@ -503,6 +580,11 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 - The **repo is public** — keep secrets out.
 - `.env*` and `*.local` are gitignored; API/product keys live only in `app/.env.local` + hosts.
 - Mock vs real is controlled by **`NEXT_PUBLIC_MOCK`** (`app/src/lib/api.ts` → `IS_MOCK`).
+- ⚠️ **Work in `sharpflow-health-demo\`** — `..\sharpflow-clickup-health-works\` is a stale clone at
+  `74a476b` (26 Oct) and will silently diverge.
+- **No `gh` or `vercel` CLI is installed** on this machine; use Git directly and verify Vercel via the
+  live HTTP headers / dashboard.
+- **`next/og` cannot run on Windows** (bundled font path) — dynamic OG images only work on Vercel/Linux.
 
 ---
 
@@ -513,6 +595,11 @@ npm run build                     # next build  (do NOT run while `next dev` is 
   (tools: `upwork_upwork__list_accounts`, `get_messages`, `find_saved_jobs`, …)
 - **GitHub:** https://github.com/oli493/sharpflow-clickup-health-works
 - **Production app:** https://health.sharpflowconsulting.com (sample report: `/sample`)
+- **Explanation-layer preview:** https://sharpflow-clickup-health-works-git-2a851e-sharpflow-consulting.vercel.app/sample
+- **Action Plan PoC preview:** https://sharpflow-clickup-health-works-git-55cbd1-sharpflow-consulting.vercel.app/poc
+- **ClickUp technical validation:** `handover/ClickUp-Technical-Validation.md` (PDF: `handover/ClickUp-Health-Technical-Validation.pdf`; a copy is also at the workspace root)
+- **Phase 2 documents (external, not in the repo):** `..\Sharpflow-SOW-Phase-2.pdf`,
+  `..\Sharpflow-Action-Plan-Feature.pdf`
 - **Supabase dashboard:** https://supabase.com/dashboard/project/iijehqonmdfhsutkbwsz
 - **ClickUp API docs:** https://developer.clickup.com
 - **Vercel:** https://vercel.com · **Inngest:** https://app.inngest.com
@@ -541,6 +628,10 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 - **Phase A** = the Vite prototype (design/UX demo). **Phase B** = the Next.js production app.
 - **Health Score** = 0–100 deterministic score across 7 weighted categories.
 - **Finding** = a rule that fired, with severity + supporting metric + recommendation.
+- **Why this score** = the Phase 2 explanation layer: actual vs target, points impact, why it is bad
+  and what good looks like, per category and per signal (also in findings and the PDF).
+- **Action Plan** = deferred Phase 2 add-on: top 5 deterministic actions, quick wins vs consulting
+  projects, effort/impact, PDF page and "Book a call" CTA. PoC only.
 - **Drill-down** = click a metric/finding/Space to see the underlying items (a drawer with a table).
 - **Freebie** = Oli's model: give the tool to clients (potential + existing) to generate leads.
 - **Coverage** = how many categories had enough measurable data to be scored.
@@ -591,7 +682,8 @@ This branch corrects the data layer without changing the agreed scoring model.
   stale tiers and dormant-list tiers; corrected labels and sample-row wording.
 - **Partial scans:** material missing data fails the scan instead of publishing a misleading score.
 
-Validation: `npm run typecheck`, `npm test` (56 tests + 1 opt-in validation test), `npm run build`.
+Validation: `npm run typecheck`, `npm test` (69 passed + 1 opt-in validation test skipped, as of
+4 Nov 2026), `npm run build`.
 
 Real-workspace validation on **Eyes On** (383 Lists, 81,346 tasks):
 - baseline **76 (B)** -> branch **75 (B)**
@@ -608,3 +700,35 @@ Real-workspace validation on **Eyes On** (383 Lists, 81,346 tasks):
   `CLICKUP_CACHE_DIR`; the cache is never enabled in production
 
 No production env, domain, key or database changes are required.
+
+---
+
+## 22. Phase 2 — score explanations (shipped 4 Nov 2026)
+
+**Commercials.** Quoted and agreed in Upwork (not in the SOW, which deliberately left pricing open):
+- **Scope A — "Why this score" explanation layer: $150** — approved by Oli on 3 Nov, shipped 4 Nov.
+- **Scope B — Action Plan: +$150** (or **$300** for both) — **not funded**; Oli said "the explanation
+  layer is fine for now".
+- **Loyalty credit:** $150 off any future phase above $150.
+
+**What shipped (Scope A)**
+- `WhyScoreDrawer.tsx` — per-category drawer listing signals outside target first, then healthy and
+  unmeasured ones.
+- Every signal shows: value vs target, status, points lost (category + overall), plain-English "why",
+  "what good looks like", affected count and a drill-down link.
+- Findings and the **PDF** carry the same explanations, plus a "How the score works" appendix.
+- Client-facing targets are mapped in `report/map.ts` (`3414d8c`, `8fd6acf`).
+- **No change** to weights, thresholds or score numbers; no database migration; no new ClickUp
+  permissions; no AI in the explanation or score.
+
+**Commits:** `ddf72f6` (feature) → `799017d` (PDF wording) → `bccb58a`, `d6e6646` (real-workspace
+validation) → `fed3545` (merge) → `3414d8c`, `8fd6acf` (client-facing targets).
+
+**Validation:** `Indico Data` (90 Lists, 8,367 tasks) — report, 6-page PDF and explanations verified;
+test scan deleted. Production merged and live the same day.
+
+**Not shipped (Scope B — Action Plan)**
+- Built as a PoC on branch `poc/phase-2-explanations` (commit `d87fd95`): `/poc`, ranked top-5
+  actions, quick wins vs consulting projects, effort/impact, branded PDF page, "Book a call" CTA.
+- Untouched by `main`; preview-only. Do not merge without a funded scope.
+- Proposal details: `..\Sharpflow-Action-Plan-Feature.pdf` (external, not committed).
