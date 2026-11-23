@@ -70,7 +70,7 @@ Sharpflow's pipeline. It is not sold per-seat.
 > in production. The optional Action Plan remains a PoC only.
 >
 > **Nov 2026:** the free report-handoff pack (instant PDF delivery + clickable CTA/live-report link in
-> every PDF) is built on `feat/report-handoff`. ClickUp distribution validation is in progress.
+> every PDF) is **live in production** (24 Nov 2026). ClickUp distribution validation is in progress.
 
 ### Phase 2 — score explanations (delivered 4 Nov 2026)
 **Scope A — "Why this score" (shipped):** every category and signal explains its score in the report,
@@ -426,8 +426,8 @@ Git is initialised locally and pushed to the Sharpflow GitHub repo (`oli493/shar
 - [ ] **Action Plan** — PoC on `poc/phase-2-explanations`; not funded or merged ($150).
 - [x] **Main-site favicon** — fixed by Bethany (9 Nov 2026); `/favicon.ico` returns 200. ClickUp's
       cached preview may need a new task/re-added link.
-- [ ] **Report handoff additions** — "Get the PDF" instant delivery + clickable PDF CTA/live report
-      link, built on `feat/report-handoff`; awaiting preview review/merge.
+- [x] **Report handoff additions** — "Get the PDF" instant delivery + clickable PDF CTA/live report
+      link — **live in production** (24 Nov 2026).
 - [ ] **ClickUp distribution readiness** — ClickUp wants to distribute the tool; needs scoping for
       10-day deletion, retention, privacy policy, security contact and incident response.
 - [ ] **Team usage tracking** — Oli asked who on his team uses it; needs scoping (visits, connect

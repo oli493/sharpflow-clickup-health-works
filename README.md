@@ -16,8 +16,8 @@ report, findings and PDF. The optional **Action Plan** is a PoC on `poc/phase-2-
 is not merged. See `HANDOFF.md` §22.
 
 **Report handoff (Nov 2026):** "Get the PDF" captures the lead and opens the report immediately. Every
-PDF ends with clickable **Book a call** and **live report** links. Built on `feat/report-handoff`; see
-`HANDOFF.md` §23.
+PDF ends with clickable **Book a call** and **live report** links. Live in production (24 Nov 2026);
+see `HANDOFF.md` §23.
 
 ---
 

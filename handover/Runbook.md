@@ -179,5 +179,5 @@ scan-workspace → Runs**.
 - **Phase 2 documents:** `..\Sharpflow-SOW-Phase-2.pdf` and `..\Sharpflow-Action-Plan-Feature.pdf` are
   commercial documents kept **outside** the repo. The Action Plan lives only on
   `poc/phase-2-explanations`; do not merge it without a funded scope.
-- **Report handoff:** `feat/report-handoff` (instant PDF + clickable CTA/live report link) is preview-only
-  until Oli signs off. See `HANDOFF.md` §23.
+- **Report handoff:** instant PDF + clickable CTA/live report link — **live on `main`** (24 Nov 2026).
+  See `HANDOFF.md` §23.

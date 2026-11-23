@@ -8,7 +8,7 @@
 > **No secret values are in this file.** Credentials live in `app/.env.local` (gitignored) and the
 > host/platform settings. See §13.
 
-Last updated: 24 Nov 2026 · branch `feat/report-handoff` (from `2313463`; `main` @ `8fd6acf`)
+Last updated: 24 Nov 2026 · `main` @ `ee2ca1a` (production)
 
 ---
 
@@ -26,7 +26,7 @@ Last updated: 24 Nov 2026 · branch `feat/report-handoff` (from `2313463`; `main
   PDF. The optional **Action Plan** was built as a PoC but is **not funded and not merged**. See §22.
 - **Latest approved work (23 Nov 2026):** two free additions — **"Get the PDF"** now captures the lead
   and opens the report immediately, and **every PDF ends with a clickable "Book a call" + live report
-  link**. Built on `feat/report-handoff`; not merged yet. See §23.
+  link**. Merged to `main` (`ee2ca1a`) and live on 24 Nov 2026. See §23.
 - **ClickUp distribution:** ClickUp wants to distribute the tool to its sales team/clients. The
   technical validation pack is delivered; ClickUp Developer Terms introduce retention/deletion,
   privacy-policy and incident-response requirements that still need scoping. See §23.
@@ -111,7 +111,8 @@ Last updated: 24 Nov 2026 · branch `feat/report-handoff` (from `2313463`; `main
   - Misho is a **collaborator**; pushes over HTTPS with cached creds.
 - **Production:** `main` @ `8fd6acf` (4 Nov 2026) · **remote:** `origin`.
 - **Active branches:**
-  - `feat/report-handoff` (from `2313463`) — the report handoff additions; preview pending, **not merged**.
+  - `feat/report-handoff` @ `a9c3b99` — report handoff additions, **merged into `main`** (`ee2ca1a`,
+    24 Nov 2026).
   - `feat/clickup-validation-and-topology` @ `a100c90` — ClickUp validation pack + topology/opportunity
     fixes; preview shared with Oli, **not merged**.
   - `fix/scanner-correctness`, `perf/scan-throughput`, `perf/scan-tuning`, `feat/score-explanations` and
@@ -509,11 +510,13 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 
 **Live:** https://health.sharpflowconsulting.com · sample report at `/sample`.
 - `app` **`npm test`** → **70 passed, 1 skipped** (6 suites; the skip is the opt-in real-workspace
-  validation). **`tsc`** clean. **`next build`** clean, verified on `feat/report-handoff` (24 Nov 2026).
+  validation). **`tsc`** clean. **`next build`** clean, verified on `feat/report-handoff` and after merge.
 - **Report handoff test:** builds a PDF with a `reportUrl` and asserts the last page contains clickable
   Calendly + live-report link annotations.
-- **Production HEAD:** `8fd6acf` (4 Nov 2026) — matches `origin/main`. The live `/sample` page includes
-  the explanation layer. The report-handoff and topology/opportunity fixes are **not live yet**.
+- **Production HEAD:** `ee2ca1a` (24 Nov 2026) — merge of the report handoff. Verified live:
+  `/sample` and real report PDFs contain clickable Calendly + production-host report links.
+- **Not live:** the topology/opportunity-summary fixes remain on `feat/clickup-validation-and-topology`
+  (`a100c90`); merge only after Oli's explicit approval.
 - **Favicon:** `https://sharpflowconsulting.com/favicon.ico` returns **200** (fixed 9 Nov 2026).
 - **Phase 2 validation:** real workspace `Indico Data` (90 Lists, 8,367 tasks) produced a 6-page PDF
   with category and signal explanations; the test scan was deleted afterwards.
@@ -542,9 +545,8 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 - ✅ **Main-site favicon** — fixed by Bethany on 9 Nov 2026; `/favicon.ico` returns 200. ClickUp's cached
   preview refresh is a client-side step (new task / re-add the link).
 - ✅ **ClickUp technical validation pack** — `handover/ClickUp-Technical-Validation.md` + PDF (9 Nov 2026).
-- 🟡 **Report handoff additions** — built on `feat/report-handoff` @ `4b0b6a2` (24 Nov 2026), awaiting
-  preview review: "Get the PDF" opens the report immediately, and every PDF ends with clickable
-  "Book a call" + live report links. Preview in §17. See §23.
+- ✅ **Report handoff additions** — live in production (`ee2ca1a`, 24 Nov 2026): "Get the PDF" opens the
+  report immediately, and every PDF ends with clickable "Book a call" + live report links. See §23.
 - 🟡 **Topology + opportunity-summary fixes** — built on `feat/clickup-validation-and-topology` @
   `a100c90`, previewed to Oli, not merged.
 
@@ -624,8 +626,8 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 - **Production app:** https://health.sharpflowconsulting.com (sample report: `/sample`)
 - **Explanation-layer preview:** https://sharpflow-clickup-health-works-git-2a851e-sharpflow-consulting.vercel.app/sample
 - **Action Plan PoC preview:** https://sharpflow-clickup-health-works-git-55cbd1-sharpflow-consulting.vercel.app/poc
-- **Report-handoff preview:** https://sharpflow-clickup-health-works-git-4802f5-sharpflow-consulting.vercel.app
-  (Vercel login may be required; sign in with the Sharpflow account)
+- **Report-handoff preview (merged 24 Nov 2026):** https://sharpflow-clickup-health-works-git-4802f5-sharpflow-consulting.vercel.app
+  (Vercel login may be required; production is the live version)
 - **ClickUp technical validation:** `handover/ClickUp-Technical-Validation.md` (PDF: `handover/ClickUp-Health-Technical-Validation.pdf`; a copy is also at the workspace root)
 - **Phase 2 documents (external, not in the repo):** `..\Sharpflow-SOW-Phase-2.pdf`,
   `..\Sharpflow-Action-Plan-Feature.pdf`
@@ -766,7 +768,7 @@ test scan deleted. Production merged and live the same day.
 
 ## 23. Nov 2026 — report handoff & ClickUp distribution
 
-### Report handoff additions (free, approved 23 Nov 2026)
+### Report handoff additions (free, approved 23 Nov 2026 · live 24 Nov 2026)
 
 Oli approved both on 23 Nov 2026 ("Lets do it!"). Scope is deliberately small and free:
 
@@ -783,13 +785,14 @@ Oli approved both on 23 Nov 2026 ("Lets do it!"). Scope is deliberately small an
    - The PDF routes pass `req.nextUrl.origin` + the report/sample path, so preview PDFs link to the
      preview host and production PDFs link to `health.sharpflowconsulting.com`.
 
-**Branch:** `feat/report-handoff` @ `4b0b6a2`, based on `2313463` (docs/validation commit) so it inherits
-the current docs but **not** the topology/opportunity UI fix. Preview:
+**Branch:** `feat/report-handoff` @ `a9c3b99` (code `4b0b6a2`), based on `2313463` (docs/validation
+commit). **Merged into `main` (`ee2ca1a`) and live on 24 Nov 2026.** The branch preview remains at
 https://sharpflow-clickup-health-works-git-4802f5-sharpflow-consulting.vercel.app (Vercel login may be
-required). Preview only; **not merged**.
+required).
 
 **Validation:** `npm test` → **70 passed, 1 skipped**; `npm run typecheck` and `npm run build` clean.
-The new test loads the PDF and asserts both URI annotations (Calendly + report URL).
+The new test loads the PDF and asserts both URI annotations (Calendly + report URL). Production was
+verified after deploy: `/sample` and a real report PDF both contain the correct production-host links.
 
 ### ClickUp distribution readiness (new, unscoped)
 
