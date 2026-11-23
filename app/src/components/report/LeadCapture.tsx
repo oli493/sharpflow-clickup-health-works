@@ -2,17 +2,27 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Button, Chip, IconCheck, Panel } from '../ui'
-import { postLead } from '../../lib/api'
+import { Button, Chip, IconCheck, IconDownload, Panel } from '../ui'
+import { postLead, pdfUrl } from '../../lib/api'
 
 export default function LeadCapture({ scanId, sample = false }: { scanId: string; sample?: boolean }) {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [pdfHref, setPdfHref] = useState<string | null>(null)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true)
+
+    // Open the PDF before awaiting the lead request so browsers treat it as
+    // part of the submit gesture (popup blockers otherwise stop it).
+    const href = pdfUrl(scanId, sample)
+    if (href !== '#') {
+      setPdfHref(href)
+      window.open(href, '_blank', 'noopener,noreferrer')
+    }
+
     try {
       await postLead(scanId, email)
     } catch {
@@ -47,13 +57,29 @@ export default function LeadCapture({ scanId, sample = false }: { scanId: string
               </span>
             </div>
           ) : sent ? (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-7 flex items-center gap-3 rounded-xl border border-magenta/30 bg-magenta/[0.05] px-5 py-4">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-sev-good/15 text-sev-good">
-                <IconCheck className="h-4 w-4" />
-              </span>
-              <span className="text-sm text-txt-primary">
-                Thanks. We've queued a full copy to <span className="font-medium">{email || 'your inbox'}</span>.
-              </span>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-7 rounded-xl border border-magenta/30 bg-magenta/[0.05] px-5 py-4">
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sev-good/15 text-sev-good">
+                  <IconCheck className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-sm text-txt-primary">
+                    {pdfHref
+                      ? "Thanks — your PDF is ready. We've also saved your details so Sharpflow can follow up."
+                      : "Thanks — your details are saved so Sharpflow can follow up."}
+                  </p>
+                  {pdfHref && (
+                    <a
+                      href={pdfHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-magenta underline-offset-4 hover:underline"
+                    >
+                      <IconDownload className="h-3.5 w-3.5" /> Download the PDF
+                    </a>
+                  )}
+                </div>
+              </div>
             </motion.div>
           ) : (
             <form onSubmit={submit} className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -66,7 +92,7 @@ export default function LeadCapture({ scanId, sample = false }: { scanId: string
                 className="flex-1 rounded-full border border-line-strong bg-white px-5 py-3.5 text-[15px] text-txt-primary outline-none transition-colors placeholder:text-txt-faint focus:border-magenta"
               />
               <Button type="submit" disabled={busy} className="px-7 py-3.5 text-[15px]">
-                {busy ? 'Sending…' : 'Email me the report'}
+                {busy ? 'Preparing…' : 'Get the PDF'}
               </Button>
             </form>
           )}

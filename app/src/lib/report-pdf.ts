@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import { PDFArray, PDFDict, PDFDocument, PDFName, PDFPage, PDFString, StandardFonts, rgb } from 'pdf-lib'
 import fs from 'node:fs'
 import path from 'node:path'
 import type { ScanResult, Severity } from './types'
@@ -8,6 +8,8 @@ const GREEN2 = rgb(0.141, 0.341, 0.306)
 const MAGENTA = rgb(0.878, 0.063, 0.447)
 const GREY = rgb(0.42, 0.505, 0.478)
 const LINE = rgb(0.85, 0.87, 0.85)
+
+const CALENDLY = 'https://calendly.com/oli-sharpflowconsulting/clickup-health-discussion'
 
 const SEV_COLOR: Record<Severity, ReturnType<typeof rgb>> = {
   critical: rgb(0.839, 0.2, 0.424),
@@ -37,6 +39,7 @@ export interface ReportPdfOptions {
   wordmark?: Uint8Array | null
   badge?: Uint8Array | null
   brandDir?: string
+  reportUrl?: string
 }
 
 /**
@@ -98,6 +101,20 @@ export async function buildReportPdf(result: ScanResult, opts: ReportPdfOptions 
   }
   const need = (h: number) => {
     if (y - h < M + 26) newPage()
+  }
+  const addUriLink = (pg: PDFPage, x: number, y1: number, w: number, h: number, uri: string) => {
+    const ref = doc.context.register(
+      doc.context.obj({
+        Type: 'Annot',
+        Subtype: 'Link',
+        Rect: [x, y1, x + w, y1 + h],
+        Border: [0, 0, 0],
+        A: { Type: 'Action', S: 'URI', URI: PDFString.of(uri) },
+      }),
+    )
+    const annots = pg.node.lookupMaybe(PDFName.of('Annots'), PDFArray)
+    if (annots) annots.push(ref)
+    else pg.node.set(PDFName.of('Annots'), doc.context.obj([ref]))
   }
   const text = (s: string, size = 10, color = GREEN, f = font, x = M) => {
     need(size + 4)
@@ -291,6 +308,38 @@ export async function buildReportPdf(result: ScanResult, opts: ReportPdfOptions 
     page.drawText(label, { x: M + 190, y: y - 10, size: 9, font, color: u.status === 'detected' ? GREEN2 : GREY })
     page.drawText(u.detail, { x: M + 300, y: y - 10, size: 8, font, color: GREY })
     y -= 14
+  }
+
+  rule()
+  sectionTitle('Next step', MAGENTA)
+  para('Turn this report into a clear action plan with Sharpflow.', 10, GREEN, bold)
+
+  need(18)
+  page.drawText('Book a call with Sharpflow', { x: M, y: y - 9, size: 9, font: bold, color: MAGENTA })
+  addUriLink(page, M, y - 11, bold.widthOfTextAtSize('Book a call with Sharpflow', 9), 12, CALENDLY)
+  y -= 14
+
+  {
+    const bookUrl = CALENDLY
+    let size = 7.8
+    while (size > 6 && font.widthOfTextAtSize(bookUrl, size) > CW) size -= 0.2
+    need(size + 8)
+    page.drawText(bookUrl, { x: M, y: y - size, size, font, color: GREY })
+    addUriLink(page, M, y - size - 2, font.widthOfTextAtSize(bookUrl, size), size + 3, bookUrl)
+    y -= size + 7
+  }
+
+  if (opts.reportUrl) {
+    const label = 'Live report: '
+    const url = opts.reportUrl
+    const full = `${label}${url}`
+    let size = 7.8
+    while (size > 6 && font.widthOfTextAtSize(full, size) > CW) size -= 0.2
+    need(size + 8)
+    page.drawText(full, { x: M, y: y - size, size, font, color: GREY })
+    const labelW = font.widthOfTextAtSize(label, size)
+    addUriLink(page, M + labelW, y - size - 2, font.widthOfTextAtSize(url, size), size + 3, url)
+    y -= size + 7
   }
 
   footer()
