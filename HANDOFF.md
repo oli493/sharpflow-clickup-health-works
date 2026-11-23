@@ -8,7 +8,7 @@
 > **No secret values are in this file.** Credentials live in `app/.env.local` (gitignored) and the
 > host/platform settings. See §13.
 
-Last updated: 4 Nov 2026 · branch `main` @ `8fd6acf`
+Last updated: 24 Nov 2026 · branch `feat/report-handoff` (from `2313463`; `main` @ `8fd6acf`)
 
 ---
 
@@ -24,11 +24,17 @@ Last updated: 4 Nov 2026 · branch `main` @ `8fd6acf`
 - **Phase 2:** the **"Why this score" explanation layer shipped to production on 4 Nov 2026**
   (commit `8fd6acf`). Every category and signal now explains the score in the report, findings and
   PDF. The optional **Action Plan** was built as a PoC but is **not funded and not merged**. See §22.
-- **Blockers:** none. Outstanding items are client-side or optional: the main-site favicon (404 on
-  `sharpflowconsulting.com`), *emailed* reports (needs a sending address / DNS record), team usage
-  tracking, and the deferred Action Plan.
-- **Next:** favicon follow-up with Bethany; scope usage tracking; Action Plan if funded; report
-  email; integrations conversation — see §14.
+- **Latest approved work (23 Nov 2026):** two free additions — **"Get the PDF"** now captures the lead
+  and opens the report immediately, and **every PDF ends with a clickable "Book a call" + live report
+  link**. Built on `feat/report-handoff`; not merged yet. See §23.
+- **ClickUp distribution:** ClickUp wants to distribute the tool to its sales team/clients. The
+  technical validation pack is delivered; ClickUp Developer Terms introduce retention/deletion,
+  privacy-policy and incident-response requirements that still need scoping. See §23.
+- **Blockers:** none. Outstanding items are client-side or optional: *emailed* reports (needs a
+  sending address / DNS record), team usage tracking, the deferred Action Plan, and ClickUp
+  distribution readiness.
+- **Next:** Oli review of the report-handoff preview + topology fix; scope ClickUp compliance work;
+  merge approved branches; report email; integrations — see §14.
 
 ---
 
@@ -103,10 +109,14 @@ Last updated: 4 Nov 2026 · branch `main` @ `8fd6acf`
 - **Remote (GitHub):** https://github.com/oli493/sharpflow-clickup-health-works
   - Owner `oli493` = Oli's **personal** GitHub account. Repo is **PUBLIC** (Oli's choice).
   - Misho is a **collaborator**; pushes over HTTPS with cached creds.
-- **Branch:** `main` @ `8fd6acf` · **remote:** `origin` · working tree clean.
-- **Branches:** `fix/scanner-correctness`, `perf/scan-throughput`, `perf/scan-tuning`,
-  `feat/score-explanations` and `fix/link-icon` are **merged** into `main`.
-  `poc/phase-2-explanations` is **unmerged** (Action Plan PoC, preview only).
+- **Production:** `main` @ `8fd6acf` (4 Nov 2026) · **remote:** `origin`.
+- **Active branches:**
+  - `feat/report-handoff` (from `2313463`) — the report handoff additions; preview pending, **not merged**.
+  - `feat/clickup-validation-and-topology` @ `a100c90` — ClickUp validation pack + topology/opportunity
+    fixes; preview shared with Oli, **not merged**.
+  - `fix/scanner-correctness`, `perf/scan-throughput`, `perf/scan-tuning`, `feat/score-explanations` and
+    `fix/link-icon` are **merged** into `main`.
+  - `poc/phase-2-explanations` is **unmerged** (Action Plan PoC, preview only).
 - ⚠️ `..\sharpflow-clickup-health-works\` is a **stale duplicate clone** (HEAD `74a476b`, 26 Oct).
   Do all work in `sharpflow-health-demo\`.
 - **Structure (monorepo):**
@@ -498,10 +508,13 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 ## 13. Verified state / real results
 
 **Live:** https://health.sharpflowconsulting.com · sample report at `/sample`.
-- `app` **`npm test`** → **69 passed, 1 skipped** (6 suites; the skip is the opt-in real-workspace
-  validation). **`tsc`** clean. **`next build`** clean.
+- `app` **`npm test`** → **70 passed, 1 skipped** (6 suites; the skip is the opt-in real-workspace
+  validation). **`tsc`** clean. **`next build`** clean, verified on `feat/report-handoff` (24 Nov 2026).
+- **Report handoff test:** builds a PDF with a `reportUrl` and asserts the last page contains clickable
+  Calendly + live-report link annotations.
 - **Production HEAD:** `8fd6acf` (4 Nov 2026) — matches `origin/main`. The live `/sample` page includes
-  the explanation layer.
+  the explanation layer. The report-handoff and topology/opportunity fixes are **not live yet**.
+- **Favicon:** `https://sharpflowconsulting.com/favicon.ico` returns **200** (fixed 9 Nov 2026).
 - **Phase 2 validation:** real workspace `Indico Data` (90 Lists, 8,367 tasks) produced a 6-page PDF
   with category and signal explanations; the test scan was deleted afterwards.
 - **Schema** applied and reachable (REST 200 on all tables).
@@ -526,12 +539,23 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 - ✅ Scan worker hardened for very large workspaces (chunked steps, request timeouts, failure recording).
 - ✅ Scanner correctness v1.1 + speed v1.2–v1.4 (full coverage; Eyes On ~9.6 min, 628 MB peak).
 - ✅ **"Why this score" explanation layer** — live in the report, findings and PDF (4 Nov 2026).
+- ✅ **Main-site favicon** — fixed by Bethany on 9 Nov 2026; `/favicon.ico` returns 200. ClickUp's cached
+  preview refresh is a client-side step (new task / re-add the link).
+- ✅ **ClickUp technical validation pack** — `handover/ClickUp-Technical-Validation.md` + PDF (9 Nov 2026).
+- 🟡 **Report handoff additions** — built on `feat/report-handoff` (24 Nov 2026), awaiting preview review:
+  "Get the PDF" opens the report immediately, and every PDF ends with clickable "Book a call" + live
+  report links. See §23.
+- 🟡 **Topology + opportunity-summary fixes** — built on `feat/clickup-validation-and-topology` @
+  `a100c90`, previewed to Oli, not merged.
 
 **Remaining / open**
-- **Favicon on the main marketing site:** `https://sharpflowconsulting.com/favicon.ico` returns **404**
-  (confirmed 4 Nov 2026); the health app's favicon works. Fix is on the Framer site (Bethany), plus a
-  possible domain-level redirect. This is the last item Oli raised.
+- **ClickUp distribution readiness:** ClickUp wants to distribute the tool. Its Developer Terms require
+  End User Data deletion within **10 days** of deauthorisation/uninstall, security-incident notification
+  within **24 hours**, a privacy policy and a security contact. The app currently has **no
+  disconnect/delete flow and no retention job**, and `leads` survive connection deletion. This needs a
+  scoped phase before distribution. See §23.
 - **Team usage tracking:** Oli asked who on his team is using it; offered but **not scoped or priced**.
+  More relevant now that ClickUp may roll it out to a sales team.
 - **Action Plan (Scope B):** built as a PoC on `poc/phase-2-explanations`, **not funded or merged**
   (quoted at $150, or $300 bundled with the explanation layer).
 - **Integrations:** Oli asked about linking systems; no systems named yet.
@@ -558,9 +582,12 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 - **Anthropic workspace id** — ✅ done (`LLM_WORKSPACE_ID` set; AI summary live).
 - **Domain** — ✅ done (`health.sharpflowconsulting.com` live).
 - **Production redirect URL** on the ClickUp app — ✅ done.
-- **Main-site favicon (Framer):** upload a 512×512 PNG in Framer → Site Settings → General → Favicon,
-  publish, then confirm `https://sharpflowconsulting.com/favicon.ico` loads. If it still 404s, add a
-  domain-level redirect from `/favicon.ico`. Owned by **Bethany**.
+- **Main-site favicon** — ✅ done by Bethany (9 Nov 2026). Oli may still need to create a fresh ClickUp
+  task to refresh ClickUp's cached link preview.
+- **Preview review:** the report-handoff additions and the topology/opportunity-summary fixes are on
+  separate branches; Oli needs to approve the previews before merge.
+- **ClickUp distribution:** confirm ClickUp's exact validation requirements and who owns the privacy
+  policy / security contact / deletion process.
 - **Usage-tracking decision:** confirm whether Oli wants visits, connect attempts and scans by account
   (beyond the current connections/completed-scans count).
 - **[Optional]** a sending address / DNS record on the Sharpflow domain to switch on **emailed reports**.
@@ -732,3 +759,55 @@ test scan deleted. Production merged and live the same day.
   actions, quick wins vs consulting projects, effort/impact, branded PDF page, "Book a call" CTA.
 - Untouched by `main`; preview-only. Do not merge without a funded scope.
 - Proposal details: `..\Sharpflow-Action-Plan-Feature.pdf` (external, not committed).
+
+---
+
+## 23. Nov 2026 — report handoff & ClickUp distribution
+
+### Report handoff additions (free, approved 23 Nov 2026)
+
+Oli approved both on 23 Nov 2026 ("Lets do it!"). Scope is deliberately small and free:
+
+1. **"Get the PDF" instead of "Email me the report"** — `LeadCapture.tsx` now:
+   - captures the lead exactly as before (`POST /api/leads`),
+   - opens the generated PDF immediately (before the network await, so popup blockers do not stop it),
+   - shows an honest success message plus a fallback "Download the PDF" link.
+   - **Email sending is still not wired** (Resend/DNS pending); the UI no longer claims it is.
+2. **Closing CTA in every PDF** — `report-pdf.ts` now appends:
+   - "Next step — Turn this report into a clear action plan with Sharpflow."
+   - a clickable **Book a call with Sharpflow** link,
+   - the full Calendly URL,
+   - a clickable **Live report** link when `reportUrl` is supplied.
+   - The PDF routes pass `req.nextUrl.origin` + the report/sample path, so preview PDFs link to the
+     preview host and production PDFs link to `health.sharpflowconsulting.com`.
+
+**Branch:** `feat/report-handoff`, based on `2313463` (docs/validation commit) so it inherits the current
+docs but **not** the topology/opportunity UI fix. Preview only; **not merged**.
+
+**Validation:** `npm test` → **70 passed, 1 skipped**; `npm run typecheck` and `npm run build` clean.
+The new test loads the PDF and asserts both URI annotations (Calendly + report URL).
+
+### ClickUp distribution readiness (new, unscoped)
+
+Oli's 9 Nov context: ClickUp wants to distribute the tool to its sales team, send it to clients, or
+introduce Sharpflow to run it for them — subject to technical validation.
+
+The validation pack (`handover/ClickUp-Technical-Validation.md` + PDF) covers the OAuth flow, endpoints,
+read-only behaviour, the separate lead-capture write, security, storage and distribution model.
+However, ClickUp's [Developer Terms](https://clickup.com/terms/developer-terms) add requirements the
+current build does **not** meet:
+
+- **Delete End User Data within 10 days** after deauthorisation/uninstall (or obtain explicit consent to
+  retain), and notify `marketplace@clickup.com`.
+- **Notify ClickUp of security incidents within 24 hours**; keep a security contact current.
+- Publish a **Privacy Policy** covering the app's data collection/use.
+- Do not sell End User Data or use it to train AI/ML models without consent.
+
+Current gaps:
+- no disconnect/delete-data flow and no retention job; scans are retained indefinitely;
+- deleting a connection cascades scans/findings/list_stats/scan_samples, but **leads survive**
+  (`scan_id` set null), so lead emails need separate deletion;
+- no public privacy policy at `sharpflowconsulting.com/privacy` (only `/service-agreement-terms`);
+- no named security contact / incident procedure in the validation pack.
+
+This should be scoped (and priced) as a separate phase **before** agreeing to ClickUp distribution.

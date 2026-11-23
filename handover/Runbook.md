@@ -130,7 +130,9 @@ measurable weight is excluded as "Not measured"); an "insufficient data" state f
   scores. Scans created before 4 Nov 2026 have no explainer data.
 - **PDF:** `app/src/lib/report-pdf.ts`, served at `GET /api/scans/[id]/report.pdf` (branded, uses
   `public/brand/logo-wordmark.png` + `partner-badge.png`; includes category explanations, finding
-  targets and a methodology appendix).
+  targets, a methodology appendix, and a closing "Next step" block with clickable **Book a call** and
+  **live report** links). The report URL is derived from the request origin, so preview PDFs link to the
+  preview host and production PDFs link to `health.sharpflowconsulting.com`.
 - **Sample report:** `/sample` renders the report with synthetic "Northwind Creative" data; its PDF is
   at `/api/sample/report.pdf`.
 - **Share (link-preview) images:**
@@ -161,7 +163,8 @@ needs a sending address/DNS record on the Sharpflow domain.)
 | **Connect fails / `?connect=error`** | Check `CLICKUP_REDIRECT_URI` matches the deployed callback and the ClickUp app's redirect URL. |
 | **AI summary missing** | Check `LLM_API_KEY` + `LLM_WORKSPACE_ID`; the report falls back to templated text if the call fails. |
 | **"Why this score" data missing** | The scan predates 4 Nov 2026 (no `explainers` in `result`). Run a new scan; no migration or env change is needed. |
-| **Main-site link preview still shows a globe** | `https://sharpflowconsulting.com/favicon.ico` returns 404. Set the favicon in Framer, publish, then re-add the link; if it still 404s, add a domain-level redirect. Owned by Bethany. |
+| **Main-site link preview still shows a globe** | The favicon is fixed (9 Nov 2026), but ClickUp caches previews. Create a new ClickUp task or re-add the link. If `/favicon.ico` ever 404s again, check the Framer publish and domain redirect. |
+| **"Email me the report" never arrives** | Expected: email sending is not wired yet. The CTA is now **"Get the PDF"** and opens the report immediately; the lead is still saved. |
 
 Logs: **Vercel → Project → Logs** (filter `/api/inngest`) and **app.inngest.com → Functions →
 scan-workspace → Runs**.
@@ -176,3 +179,5 @@ scan-workspace → Runs**.
 - **Phase 2 documents:** `..\Sharpflow-SOW-Phase-2.pdf` and `..\Sharpflow-Action-Plan-Feature.pdf` are
   commercial documents kept **outside** the repo. The Action Plan lives only on
   `poc/phase-2-explanations`; do not merge it without a funded scope.
+- **Report handoff:** `feat/report-handoff` (instant PDF + clickable CTA/live report link) is preview-only
+  until Oli signs off. See `HANDOFF.md` §23.

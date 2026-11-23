@@ -68,6 +68,9 @@ Sharpflow's pipeline. It is not sold per-seat.
 >
 > **Phase 2 update (4 Nov 2026):** the "Why this score" explanation layer is **delivered and live**
 > in production. The optional Action Plan remains a PoC only.
+>
+> **Nov 2026:** the free report-handoff pack (instant PDF delivery + clickable CTA/live-report link in
+> every PDF) is built on `feat/report-handoff`. ClickUp distribution validation is in progress.
 
 ### Phase 2 — score explanations (delivered 4 Nov 2026)
 **Scope A — "Why this score" (shipped):** every category and signal explains its score in the report,
@@ -139,7 +142,8 @@ subscription plans, advanced reporting, additional AI functionality, connectors 
   vs target, points impact, why it is bad and what good looks like. The same detail appears on findings
   and in the PDF.
 - **Configurable rules & thresholds** engine.
-- **Branded PDF export** — includes category explanations, finding targets and a methodology appendix.
+- **Branded PDF export** — includes category explanations, finding targets, a methodology appendix, and
+  a closing "Next step" block with clickable **Book a call** and **live report** links.
 - **Public sample report** (`/sample`) so prospects can preview before connecting.
 - **Social share preview cards** — shared report links unfurl with the score; the landing page uses a Sharpflow brand image.
 
@@ -329,8 +333,10 @@ token management, permissions, missing data.
 ## 11. Lead capture
 
 - Email capture on the results ("Email me the report").
-- **Status:** the lead is captured and created in the CRM, but the PDF is **not emailed yet** — that
-  needs a sending address/DNS record on the Sharpflow domain (Resend), which is still outstanding.
+- **Status:** the lead is captured and created in the CRM. The CTA now reads **"Get the PDF"**, captures
+  the lead, and opens the PDF immediately (with a fallback download link). The PDF is still **not
+  emailed** — that needs a sending address/DNS record on the Sharpflow domain (Resend), which remains
+  outstanding.
 - Primary CTA: **"Book a call with Sharpflow"**.
 - Diamond Partner badge as a trust signal (transparent PNG).
 
@@ -418,8 +424,12 @@ Git is initialised locally and pushed to the Sharpflow GitHub repo (`oli493/shar
 - [x] PDF export — **branded, live**.
 - [x] "Why this score" explanation layer — **built and live** (4 Nov 2026); see §5 and §9.
 - [ ] **Action Plan** — PoC on `poc/phase-2-explanations`; not funded or merged ($150).
-- [ ] **Main-site favicon** — `https://sharpflowconsulting.com/favicon.ico` is **404** (confirmed
-      4 Nov 2026); needs a Framer publish (Bethany), plus a possible domain-level redirect.
+- [x] **Main-site favicon** — fixed by Bethany (9 Nov 2026); `/favicon.ico` returns 200. ClickUp's
+      cached preview may need a new task/re-added link.
+- [ ] **Report handoff additions** — "Get the PDF" instant delivery + clickable PDF CTA/live report
+      link, built on `feat/report-handoff`; awaiting preview review/merge.
+- [ ] **ClickUp distribution readiness** — ClickUp wants to distribute the tool; needs scoping for
+      10-day deletion, retention, privacy policy, security contact and incident response.
 - [ ] **Team usage tracking** — Oli asked who on his team uses it; needs scoping (visits, connect
       attempts, scans by account).
 - [ ] **Integrations** — Oli asked about linking systems; no systems named yet.
