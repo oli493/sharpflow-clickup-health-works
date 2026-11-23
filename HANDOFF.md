@@ -542,9 +542,9 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 - ✅ **Main-site favicon** — fixed by Bethany on 9 Nov 2026; `/favicon.ico` returns 200. ClickUp's cached
   preview refresh is a client-side step (new task / re-add the link).
 - ✅ **ClickUp technical validation pack** — `handover/ClickUp-Technical-Validation.md` + PDF (9 Nov 2026).
-- 🟡 **Report handoff additions** — built on `feat/report-handoff` (24 Nov 2026), awaiting preview review:
-  "Get the PDF" opens the report immediately, and every PDF ends with clickable "Book a call" + live
-  report links. See §23.
+- 🟡 **Report handoff additions** — built on `feat/report-handoff` @ `4b0b6a2` (24 Nov 2026), awaiting
+  preview review: "Get the PDF" opens the report immediately, and every PDF ends with clickable
+  "Book a call" + live report links. Preview in §17. See §23.
 - 🟡 **Topology + opportunity-summary fixes** — built on `feat/clickup-validation-and-topology` @
   `a100c90`, previewed to Oli, not merged.
 
@@ -624,6 +624,8 @@ npm run build                     # next build  (do NOT run while `next dev` is 
 - **Production app:** https://health.sharpflowconsulting.com (sample report: `/sample`)
 - **Explanation-layer preview:** https://sharpflow-clickup-health-works-git-2a851e-sharpflow-consulting.vercel.app/sample
 - **Action Plan PoC preview:** https://sharpflow-clickup-health-works-git-55cbd1-sharpflow-consulting.vercel.app/poc
+- **Report-handoff preview:** https://sharpflow-clickup-health-works-git-4802f5-sharpflow-consulting.vercel.app
+  (Vercel login may be required; sign in with the Sharpflow account)
 - **ClickUp technical validation:** `handover/ClickUp-Technical-Validation.md` (PDF: `handover/ClickUp-Health-Technical-Validation.pdf`; a copy is also at the workspace root)
 - **Phase 2 documents (external, not in the repo):** `..\Sharpflow-SOW-Phase-2.pdf`,
   `..\Sharpflow-Action-Plan-Feature.pdf`
@@ -781,8 +783,10 @@ Oli approved both on 23 Nov 2026 ("Lets do it!"). Scope is deliberately small an
    - The PDF routes pass `req.nextUrl.origin` + the report/sample path, so preview PDFs link to the
      preview host and production PDFs link to `health.sharpflowconsulting.com`.
 
-**Branch:** `feat/report-handoff`, based on `2313463` (docs/validation commit) so it inherits the current
-docs but **not** the topology/opportunity UI fix. Preview only; **not merged**.
+**Branch:** `feat/report-handoff` @ `4b0b6a2`, based on `2313463` (docs/validation commit) so it inherits
+the current docs but **not** the topology/opportunity UI fix. Preview:
+https://sharpflow-clickup-health-works-git-4802f5-sharpflow-consulting.vercel.app (Vercel login may be
+required). Preview only; **not merged**.
 
 **Validation:** `npm test` → **70 passed, 1 skipped**; `npm run typecheck` and `npm run build` clean.
 The new test loads the PDF and asserts both URI annotations (Calendly + report URL).
